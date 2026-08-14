@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // handleStatic 提供激活构建的静态文件.

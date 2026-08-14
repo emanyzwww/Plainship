@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/fsutil"
 )
 
 // Server 是开发模式 HTTP 服务器.

@@ -15,9 +15,9 @@ import (
 	"github.com/tdewolff/minify/v2/html"
 	"github.com/tdewolff/minify/v2/js"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/hash"
-	"github.com/emanyzwww/Plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/hash"
+	"github.com/emanyzwww/plainship/internal/manifest"
 )
 
 // minifyDir 压缩目录下全部 HTML/CSS/JS 文件, 并刷新清单哈希.

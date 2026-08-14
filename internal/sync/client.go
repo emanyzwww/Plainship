@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/hash"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/manifest"
-	"github.com/emanyzwww/Plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/hash"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/state"
 )
 
 // ProtocolVersion 是当前同步协议版本.

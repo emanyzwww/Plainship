@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/hash"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/manifest"
-	"github.com/emanyzwww/Plainship/internal/revision"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/state"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/hash"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/revision"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // StatusReport 是 status 命令的输出数据.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // TestPreviewHandler 服务 build 目录内容 (index.html 可访问).

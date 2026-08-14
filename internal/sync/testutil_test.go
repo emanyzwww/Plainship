@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/builder"
-	"github.com/emanyzwww/Plainship/internal/manifest"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/builder"
+	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/state"
 )
 
 // buildForTest 在 Space 上执行一次构建.

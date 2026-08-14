@@ -9,14 +9,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/builder"
-	"github.com/emanyzwww/Plainship/internal/core"
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/state"
-	"github.com/emanyzwww/Plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/builder"
+	"github.com/emanyzwww/plainship/internal/core"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/style"
 )
 
 // previewInfo 是 preview 命令的构建摘要.

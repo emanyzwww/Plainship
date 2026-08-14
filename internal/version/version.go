@@ -4,7 +4,7 @@
 package version
 
 // Version 是 Plainship 产品版本号.
-// 发布构建通过 -ldflags "-X github.com/emanyzwww/Plainship/internal/version.Version=<tag>" 注入;
+// 发布构建通过 -ldflags "-X github.com/emanyzwww/plainship/internal/version.Version=<tag>" 注入;
 var Version = "0.1.0"
 
 // RendererVersion 返回渲染器版本 (跟随产品版本).

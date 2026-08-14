@@ -283,8 +283,8 @@ GFM (GitHub Flavored Markdown): headings, paragraphs, bold, italics, links (reso
 
 ### Client (CLI)
 
-- Download the binary for your platform from the [GitHub Releases](https://github.com/emanyzwww/Plainship/releases) (Linux / macOS / Windows, amd64 & arm64)
-- Or install with Go: `go install github.com/emanyzwww/Plainship/cmd/plainship@latest`
+- Download the binary for your platform from the [GitHub Releases](https://github.com/emanyzwww/plainship/releases) (Linux / macOS / Windows, amd64 & arm64)
+- Or install with Go: `go install github.com/emanyzwww/plainship/cmd/plainship@latest`
 - Or build from source (see [Development](#development))
 
 ### Server
@@ -293,10 +293,10 @@ Run one command on the server; Plainship detects the platform, downloads the lat
 
 ```bash
 # Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash
 
 # Windows (PowerShell)
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.ps1 -OutFile install.ps1
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.ps1 -OutFile install.ps1
 .\install.ps1
 ```
 
@@ -306,10 +306,10 @@ The install scripts support pinned versions and custom parameters (reproducible 
 
 ```bash
 # Install a specific version (pin the version in production)
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash -s -- --version <release-tag>
 
 # Custom listen address and data dir (the sh script also supports --repo / --bin-dir / --no-verify and PS_* env vars)
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash -s -- --addr :9090 --data /opt/plainship/data
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash -s -- --addr :9090 --data /opt/plainship/data
 ```
 
 > `--no-verify` skips SHA-256 verification (not recommended); the script aborts on any failure and never leaves a partial install.
@@ -445,7 +445,7 @@ The CLI only parses arguments and renders output; all business logic lives in Co
 
 ## Contributing
 
-Report issues or suggest ideas via [Issues](https://github.com/emanyzwww/Plainship/issues), or open a Pull Request:
+Report issues or suggest ideas via [Issues](https://github.com/emanyzwww/plainship/issues), or open a Pull Request:
 
 1. Fork this repository and create a feature branch
 2. Run `go test ./...` to make sure tests pass

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // TestCheckTemplateKeys 校验 t 引用的消息键:

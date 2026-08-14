@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/core"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/revision"
-	"github.com/emanyzwww/Plainship/internal/style"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/core"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/revision"
+	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // newStatusCmd 实现 plainship status.

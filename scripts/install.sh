@@ -3,7 +3,7 @@
 # Plainship 一键安装脚本 (Linux / macOS)
 #
 # 用法:
-#   curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash
 #   curl -fsSL <上面的地址> | bash -s -- --addr :9090 --data /opt/plainship/data
 #
 # 行为:
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # ---- 可配置项 ----
-REPO="${PS_REPO:-emanyzwww/Plainship}"           # GitHub 仓库 owner/name
+REPO="${PS_REPO:-emanyzwww/plainship}"           # GitHub 仓库 owner/name
 VERSION="${PS_VERSION:-latest}"                  # latest 或 v0.x.y 形式
 ADDR="${PS_ADDR:-:9090}"                         # 监听地址
 DATA_DIR="${PS_DATA:-}"                          # 数据目录 (默认按 root 判断)

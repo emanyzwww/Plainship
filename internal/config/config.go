@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/hash"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/hash"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
 	"gopkg.in/yaml.v3"
 )
 

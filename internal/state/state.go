@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/emanyzwww/Plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/layout"
 )
 
 // Dir 返回 .plainship 目录路径.

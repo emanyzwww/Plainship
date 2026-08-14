@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/style"
-	"github.com/emanyzwww/Plainship/internal/sync"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/sync"
 )
 
 // newConnectCmd 实现 plainship connect <服务器地址> [--token <令牌>].

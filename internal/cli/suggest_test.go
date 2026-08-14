@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // TestSuggestFor 错误键到建议键的映射.

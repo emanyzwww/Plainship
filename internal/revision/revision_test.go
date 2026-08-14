@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/git"
-	"github.com/emanyzwww/Plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/git"
+	"github.com/emanyzwww/plainship/internal/space"
 )
 
 // setupSpace 创建临时 Space 并配置 Git 身份.

@@ -10,12 +10,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/core"
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/core"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/style"
 )
 
 // newPublishCmd 实现 plainship publish.

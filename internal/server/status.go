@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // handleStatus 返回站点的发布状态.

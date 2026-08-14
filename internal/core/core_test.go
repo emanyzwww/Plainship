@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/git"
-	"github.com/emanyzwww/Plainship/internal/revision"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/git"
+	"github.com/emanyzwww/plainship/internal/revision"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/state"
 )
 
 // setupSpace 创建临时 Space 并配置 Git 身份.

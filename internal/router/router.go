@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/model"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/model"
 )
 
 // Resolver 负责路由解析.

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/emanyzwww/Plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/state"
 )
 
 // FileType 表示产物类型.

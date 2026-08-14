@@ -1,7 +1,7 @@
 # Plainship 一键安装脚本 (Windows)
 #
 # 用法 (PowerShell):
-#   Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.ps1 -OutFile install.ps1
+#   Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.ps1 -OutFile install.ps1
 #   .install.ps1
 #   .install.ps1 -Addr :9090 -DataDir C:plainship-data
 #
@@ -16,7 +16,7 @@
 param(
     [string]$Addr = ':9090',
     [string]$DataDir = '',
-    [string]$Repo = 'emanyzwww/Plainship',
+    [string]$Repo = 'emanyzwww/plainship',
     [string]$Version = 'latest',
     [switch]$NoVerify
 )

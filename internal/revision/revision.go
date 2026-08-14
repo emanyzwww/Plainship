@@ -13,12 +13,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/fsutil"
-	"github.com/emanyzwww/Plainship/internal/git"
-	"github.com/emanyzwww/Plainship/internal/hash"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/fsutil"
+	"github.com/emanyzwww/plainship/internal/git"
+	"github.com/emanyzwww/plainship/internal/hash"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/space"
 )
 
 // Category 是源码类别, 分步提交与变更统计均按类别进行.

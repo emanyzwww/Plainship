@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/git"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/state"
-	"github.com/emanyzwww/Plainship/internal/theme"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/git"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/theme"
 )
 
 // Space 表示一个 Plainship 的 Space

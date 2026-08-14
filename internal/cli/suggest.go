@@ -3,7 +3,7 @@ package cli
 import (
 	"errors"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // suggestions 映射错误键到"下一步建议"消息键.

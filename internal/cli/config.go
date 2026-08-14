@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/cliconfig"
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/cliconfig"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // configKey 是配置项字段访问器.

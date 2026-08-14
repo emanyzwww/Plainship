@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/emanyzwww/Plainship/internal/builder"
-	"github.com/emanyzwww/Plainship/internal/dev"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/builder"
+	"github.com/emanyzwww/plainship/internal/dev"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // DevOptions 控制 Dev 模式行为.

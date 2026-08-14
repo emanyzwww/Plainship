@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/layout"
 )
 
 func TestDefault(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/manifest"
-	"github.com/emanyzwww/Plainship/internal/space"
-	"github.com/emanyzwww/Plainship/internal/state"
+	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/state"
 )
 
 // setupSyncedSpace 创建 Space 并执行一次构建, 然后记录一次"已同步"状态.

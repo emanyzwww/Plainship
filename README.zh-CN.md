@@ -284,8 +284,8 @@ GFM（GitHub Flavored Markdown）：标题、段落、粗体、斜体、链接�
 
 ### 客户端（CLI）
 
-- 从 [GitHub Releases](https://github.com/emanyzwww/Plainship/releases) 下载对应平台的二进制（Linux / macOS / Windows 的 amd64 与 arm64）
-- 或使用 Go 安装：`go install github.com/emanyzwww/Plainship/cmd/plainship@latest`
+- 从 [GitHub Releases](https://github.com/emanyzwww/plainship/releases) 下载对应平台的二进制（Linux / macOS / Windows 的 amd64 与 arm64）
+- 或使用 Go 安装：`go install github.com/emanyzwww/plainship/cmd/plainship@latest`
 - 或从源码构建（见[开发](#开发)）
 
 ### 服务器
@@ -294,10 +294,10 @@ GFM（GitHub Flavored Markdown）：标题、段落、粗体、斜体、链接�
 
 ```bash
 # Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash
 
 # Windows（PowerShell）
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.ps1 -OutFile install.ps1
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.ps1 -OutFile install.ps1
 .\install.ps1
 ```
 
@@ -307,10 +307,10 @@ Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/P
 
 ```bash
 # 安装指定版本（推荐生产环境固定版本）
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash -s -- --version <release-tag>
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash -s -- --version <release-tag>
 
 # 自定义监听地址与数据目录（sh 版本还支持 --repo / --bin-dir / --no-verify 及 PS_* 环境变量）
-curl -fsSL https://raw.githubusercontent.com/emanyzwww/Plainship/master/scripts/install.sh | bash -s -- --addr :9090 --data /opt/plainship/data
+curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash -s -- --addr :9090 --data /opt/plainship/data
 ```
 
 > `--no-verify` 会跳过 SHA-256 校验（不推荐）；脚本默认在任何一步失败时中止，不会留下残缺安装。
@@ -446,7 +446,7 @@ CLI 只做参数解析与展示，业务逻辑全部在 Core，未来可复用�
 
 ## 贡献
 
-欢迎通过 [Issues](https://github.com/emanyzwww/Plainship/issues) 报告问题、提出建议，或提交 Pull Request：
+欢迎通过 [Issues](https://github.com/emanyzwww/plainship/issues) 报告问题、提出建议，或提交 Pull Request：
 
 1. Fork 本仓库并创建功能分支
 2. 修改后运行 `go test ./...` 确保测试通过

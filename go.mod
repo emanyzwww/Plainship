@@ -1,4 +1,4 @@
-module github.com/emanyzwww/Plainship
+module github.com/emanyzwww/plainship
 
 go 1.26.5
 

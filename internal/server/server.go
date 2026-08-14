@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // 文件名与站点 ID 的安全模式.

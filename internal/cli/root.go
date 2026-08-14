@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/Plainship/internal/cliconfig"
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/format"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/style"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/cliconfig"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/format"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // newRootCmd 是 plainship 的根命令.

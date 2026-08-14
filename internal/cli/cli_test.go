@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/config"
-	"github.com/emanyzwww/Plainship/internal/git"
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/server"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/git"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/server"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // runCLI 在指定工作目录执行 CLI, 返回输出与错误.

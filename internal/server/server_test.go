@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/sync"
+	"github.com/emanyzwww/plainship/internal/sync"
 )
 
 // setupServer 创建带临时数据目录的测试服务器.

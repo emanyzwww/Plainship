@@ -52,7 +52,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           mkdir -p dist
           go build -trimpath \
-            -ldflags "-s -w -X github.com/emanyzwww/Plainship/internal/version.Version=$version" \
+            -ldflags "-s -w -X github.com/emanyzwww/plainship/internal/version.Version=$version" \
             -o "dist/$name" ./cmd/plainship
           (cd dist && sha256sum "$name" > "$name.sha256")
 

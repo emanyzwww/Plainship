@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/space"
 )
 
 // setupSpace 在临时目录创建一个最小 Space.

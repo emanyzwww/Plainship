@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/config"
+	"github.com/emanyzwww/plainship/internal/config"
 )
 
 func TestCreate_BasicStructure(t *testing.T) {

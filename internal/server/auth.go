@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
 // checkAuth 校验 Bearer Token.

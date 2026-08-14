@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
@@ -23,7 +23,7 @@ import (
 	"github.com/yuin/goldmark/util"
 	"gopkg.in/yaml.v3"
 
-	"github.com/emanyzwww/Plainship/internal/model"
+	"github.com/emanyzwww/plainship/internal/model"
 )
 
 // ErrNoCloseMarker 表示 Front Matter 缺少结束标记.

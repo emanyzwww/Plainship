@@ -15,11 +15,11 @@ import (
 	"text/template/parse"
 	"time"
 
-	"github.com/emanyzwww/Plainship/internal/i18n"
-	"github.com/emanyzwww/Plainship/internal/layout"
-	"github.com/emanyzwww/Plainship/internal/router"
-	"github.com/emanyzwww/Plainship/internal/theme/embed"
-	"github.com/emanyzwww/Plainship/internal/version"
+	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/layout"
+	"github.com/emanyzwww/plainship/internal/router"
+	"github.com/emanyzwww/plainship/internal/theme/embed"
+	"github.com/emanyzwww/plainship/internal/version"
 )
 
 // Theme 表示一个已加载的主题.

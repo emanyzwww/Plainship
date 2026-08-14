@@ -3,7 +3,7 @@ package router
 import (
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/model"
+	"github.com/emanyzwww/plainship/internal/model"
 )
 
 func TestRouteFor(t *testing.T) {

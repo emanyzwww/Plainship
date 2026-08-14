@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/Plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/manifest"
 )
 
 // TestMinifyDir_HTML 压缩 HTML, 保留 pre 内容, 跳过非目标文件.
