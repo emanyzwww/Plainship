@@ -1,0 +1,26 @@
+{{define "article"}} {{template "head" .}} {{template "header" .}}
+<main class="container">
+  <article class="post">
+    <h1 class="post-title">{{.Page.Title}}</h1>
+    {{if or .Page.Author .Page.Date .Page.Tag}}
+    <div class="post-meta">
+      {{if .Page.Author}}<span>{{t "ThemeArticleAuthor" .Page.Author}}</span
+      >{{end}} {{if .Page.Date}}<span
+        >{{t "ThemeArticleDate" (formatDate .Page.Date)}}</span
+      >{{end}} {{if .Page.Tag}}<span>{{t "ThemeArticleTag" .Page.Tag}}</span
+      >{{end}}
+    </div>
+    {{end}}
+    <div class="post-content">{{.Page.ContentHTML}}</div>
+    {{if or .Prev .Next}}
+    <nav class="post-nav">
+      {{if .Prev}}<a class="post-nav-prev" href="{{url .Prev.Route}}"
+        >{{t "ThemeArticlePrev" .Prev.Title}}</a
+      >{{end}} {{if .Next}}<a class="post-nav-next" href="{{url .Next.Route}}"
+        >{{t "ThemeArticleNext" .Next.Title}}</a
+      >{{end}}
+    </nav>
+    {{end}}
+  </article>
+</main>
+{{template "footer" .}} {{end}}

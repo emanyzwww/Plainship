@@ -1,0 +1,81 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            ext: ''
+          - goos: linux
+            goarch: arm64
+            ext: ''
+          - goos: windows
+            goarch: amd64
+            ext: '.exe'
+          - goos: windows
+            goarch: arm64
+            ext: '.exe'
+          - goos: darwin
+            goarch: amd64
+            ext: ''
+          - goos: darwin
+            goarch: arm64
+            ext: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          name="plainship-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          go build -trimpath \
+            -ldflags "-s -w -X github.com/emanyzwww/Plainship/internal/version.Version=$version" \
+            -o "dist/$name" ./cmd/plainship
+          (cd dist && sha256sum "$name" > "$name.sha256")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.goos }}-${{ matrix.goarch }}"
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

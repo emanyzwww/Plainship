@@ -1,0 +1,14 @@
+{{define "head"}}
+<!doctype html>
+<html lang="{{.Site.Language}}">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{if .Page}}{{.Page.Title}} - {{end}}{{.Site.Title}}</title>
+    {{if .Page}}
+    <meta name="description" content="{{.Page.Summary}}"/>
+    {{end}}
+    <link rel="stylesheet" href="{{url "assets/app.css"}}"/>
+</head>
+<body>
+{{end}}

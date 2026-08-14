@@ -1,0 +1,20 @@
+{{define "home"}} {{template "head" .}} {{template "header" .}}
+<main class="container">
+  <h1 class="page-title">{{t "ThemeHomeTitle"}}</h1>
+  {{if .Docs}}
+  <ul class="doc-list">
+    {{range .Docs}}
+    <li class="doc-item">
+      <a class="doc-link" href="{{url .Route}}">{{.Title}}</a>
+      {{if .Date}}<span class="doc-date">{{formatDate .Date}}</span>{{end}} {{if
+      .Summary}}
+      <p class="doc-summary">{{.Summary}}</p>
+      {{end}}
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="empty-tip">{{t "ThemeHomeEmpty"}}</p>
+  {{end}}
+</main>
+{{template "footer" .}} {{end}}
