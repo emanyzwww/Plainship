@@ -41,20 +41,25 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build binary
+      - name: Build binaries
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
         run: |
           set -euo pipefail
-          name="plainship-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
           version="${GITHUB_REF_NAME#v}"
+          ldflags="-s -w -X github.com/emanyzwww/plainship/internal/version.Version=$version"
           mkdir -p dist
-          go build -trimpath \
-            -ldflags "-s -w -X github.com/emanyzwww/plainship/internal/version.Version=$version" \
-            -o "dist/$name" ./cmd/plainship
-          (cd dist && sha256sum "$name" > "$name.sha256")
+          # 客户端 (cmd/plainship) 与服务端 (cmd/plainship-server) 一起发布,
+          # 共享 internal/version, 版本一一对应.
+          for entry in "plainship:./cmd/plainship" "plainship-server:./cmd/plainship-server"; do
+            prefix="${entry%%:*}"
+            pkg="${entry#*:}"
+            name="${prefix}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+            go build -trimpath -ldflags "$ldflags" -o "dist/$name" "$pkg"
+            (cd dist && sha256sum "$name" > "$name.sha256")
+          done
 
       - uses: actions/upload-artifact@v4
         with:

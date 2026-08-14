@@ -1,4 +1,5 @@
-# Plainship 一键安装脚本 (Windows)
+# Plainship Server 一键安装脚本 (Windows)
+# 安装的是 plainship-server (仅服务端二进制, 不含客户端代码).
 #
 # 用法 (PowerShell):
 #   Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.ps1 -OutFile install.ps1
@@ -8,8 +9,8 @@
 # 行为:
 #   1. 检测 CPU 架构 (amd64 / arm64)
 #   2. 从 GitHub Releases 获取最新版本 (或 -Version 指定)
-#   3. 下载匹配平台的 plainship-windows-<arch>.exe 并校验 SHA-256 (可 -NoVerify 跳过)
-#   4. 停止旧实例后安装到 %LOCALAPPDATA%\Plainship\plainship.exe
+#   3. 下载匹配平台的 plainship-server-windows-<arch>.exe 并校验 SHA-256 (可 -NoVerify 跳过)
+#   4. 停止旧实例后安装到 %LOCALAPPDATA%\Plainship\plainship-server.exe
 #   5. 生成访问令牌, 后台启动服务 (日志 + PID 文件)
 #   6. 打印服务器地址与访问令牌
 
@@ -39,7 +40,7 @@ switch -Regex ($arch) {
     '^(ARM64|arm64)$'  { $goarch = 'arm64' }
     default { Write-Fail "Unsupported architecture: $arch (amd64 / arm64 only)" }
 }
-$binName = "plainship-windows-$goarch.exe"
+$binName = "plainship-server-windows-$goarch.exe"
 
 # ---- 2. 版本信息 ----
 if ($Version -eq 'latest') {
@@ -65,7 +66,7 @@ $shaAsset = $release.assets | Where-Object { $_.name -eq "$binName.sha256" } | S
 $localAppData = $env:LOCALAPPDATA
 if (-not $localAppData) { $localAppData = Join-Path $env:USERPROFILE 'AppData\Local' }
 $installDir = Join-Path $localAppData 'Plainship'
-$exePath = Join-Path $installDir 'plainship.exe'
+$exePath = Join-Path $installDir 'plainship-server.exe'
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
 $tmp = Join-Path $installDir "$binName.download"
@@ -93,8 +94,8 @@ $pidFile = Join-Path $DataDir 'plainship.pid'
 function Stop-RunningPlainship {
     param([string]$PidFile)
     # 按进程名停止 (不依赖 PID 文件, 覆盖手动启动的场景).
-    Get-Process -Name 'plainship' -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Host "  Stopping existing plainship (PID $($_.Id))"
+    Get-Process -Name 'plainship-server' -ErrorAction SilentlyContinue | ForEach-Object {
+        Write-Host "  Stopping existing plainship-server (PID $($_.Id))"
         Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
     }
     # PID 文件兜底: 仅当其中 PID 确实指向 plainship 进程时才停止, 防止误杀.
@@ -102,7 +103,7 @@ function Stop-RunningPlainship {
         $oldPid = Get-Content $PidFile -ErrorAction SilentlyContinue
         if ($oldPid) {
             $p = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
-            if ($p -and $p.ProcessName -eq 'plainship') {
+            if ($p -and $p.ProcessName -eq 'plainship-server') {
                 Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
             }
         }
@@ -168,6 +169,6 @@ Write-Host '  On your client (in the Space dir) run:'
 Write-Host "    plainship connect http://$hostName`:$port"
 Write-Host '  then paste the token, and run plainship publish to publish'
 Write-Host ''
-Write-Host "  Forgot the token? On the server run: plainship token --data $DataDir"
+Write-Host "  Forgot the token? On the server run: plainship-server token --data $DataDir"
 Write-Host '===========================================================' -ForegroundColor Cyan
 Write-Host ''

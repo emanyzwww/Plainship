@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/plainship/internal/sync"
+	"github.com/emanyzwww/plainship/internal/protocol"
 )
 
 // setupServer 创建带临时数据目录的测试服务器.
@@ -21,17 +21,17 @@ func setupServer(t *testing.T) *Server {
 }
 
 // syncBuild 模拟一次客户端同步, 返回响应.
-func syncBuild(t *testing.T, s *Server, siteID, buildID string, files map[string]string, deletes []string) *sync.Response {
+func syncBuild(t *testing.T, s *Server, siteID, buildID string, files map[string]string, deletes []string) *protocol.Response {
 	t.Helper()
-	var payloads []sync.FilePayload
+	var payloads []protocol.FilePayload
 	for rel, content := range files {
-		payloads = append(payloads, sync.FilePayload{
+		payloads = append(payloads, protocol.FilePayload{
 			Path:    rel,
 			Content: base64.StdEncoding.EncodeToString([]byte(content)),
 		})
 	}
-	req := sync.Request{
-		ProtocolVersion: sync.ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          siteID,
 		BuildID:         buildID,
 		Files:           payloads,
@@ -44,7 +44,7 @@ func syncBuild(t *testing.T, s *Server, siteID, buildID string, files map[string
 	if w.Code != http.StatusOK {
 		t.Fatalf("同步返回 %d: %s", w.Code, w.Body.String())
 	}
-	var resp sync.Response
+	var resp protocol.Response
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
@@ -234,11 +234,11 @@ func TestSync_IncrementalInheritance(t *testing.T) {
 // TestSync_NoIndexFails 验证缺少 index.html 时拒绝激活.
 func TestSync_NoIndexFails(t *testing.T) {
 	s := setupServer(t)
-	req := sync.Request{
-		ProtocolVersion: sync.ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          "my-docs",
 		BuildID:         "build-001",
-		Files: []sync.FilePayload{{
+		Files: []protocol.FilePayload{{
 			Path:    "a/index.html",
 			Content: base64.StdEncoding.EncodeToString([]byte("只有文章页")),
 		}},
@@ -250,7 +250,7 @@ func TestSync_NoIndexFails(t *testing.T) {
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("缺少 index.html 应 500, 实际 %d", w.Code)
 	}
-	var resp sync.Response
+	var resp protocol.Response
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp.OK {
 		t.Error("响应不应为 OK")
@@ -289,12 +289,12 @@ func TestSync_FullSyncClearsStale(t *testing.T) {
 		"assets/app.css": "body{}",
 	}, nil)
 	// 全量同步: 只上传新文件, 不带 deletes; 服务器必须整体重建.
-	req := sync.Request{
-		ProtocolVersion: sync.ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          "my-docs",
 		BuildID:         "build-002",
 		FullSync:        true,
-		Files: []sync.FilePayload{{
+		Files: []protocol.FilePayload{{
 			Path:    "index.html",
 			Content: base64.StdEncoding.EncodeToString([]byte("<h1>第二版</h1>")),
 		}},
@@ -372,7 +372,7 @@ func TestServe_RefusesEmptyToken(t *testing.T) {
 
 func TestSync_ProtocolVersionMismatch(t *testing.T) {
 	s := setupServer(t)
-	req := sync.Request{
+	req := protocol.Request{
 		ProtocolVersion: 999,
 		SiteID:          "my-docs",
 		BuildID:         "build-001",
@@ -388,11 +388,11 @@ func TestSync_ProtocolVersionMismatch(t *testing.T) {
 
 func TestSync_PathTraversalRejected(t *testing.T) {
 	s := setupServer(t)
-	req := sync.Request{
-		ProtocolVersion: sync.ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          "my-docs",
 		BuildID:         "build-001",
-		Files: []sync.FilePayload{{
+		Files: []protocol.FilePayload{{
 			Path:    "../../../etc/passwd",
 			Content: base64.StdEncoding.EncodeToString([]byte("evil")),
 		}},
@@ -413,8 +413,8 @@ func TestSync_PathTraversalRejected(t *testing.T) {
 func TestAuth_TokenRequired(t *testing.T) {
 	s := New(filepath.Join(t.TempDir(), "data"), "secret-token")
 	// 无 Token 同步被拒.
-	req := sync.Request{
-		ProtocolVersion: sync.ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          "my-docs",
 		BuildID:         "build-001",
 	}

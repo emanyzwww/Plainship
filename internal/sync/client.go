@@ -1,5 +1,6 @@
-// Package sync 实现 Plainship 同步协议与客户端.
-// 协议版本化: 客户端将已构建的静态资源上传到 Plainship Server.
+// Package sync 实现 Plainship 同步协议客户端.
+// 协议类型 (Request / Response / FilePayload / ProtocolVersion) 位于
+// internal/protocol, 与服务端共享; 本包只包含客户端实现.
 package sync
 
 import (
@@ -18,40 +19,9 @@ import (
 	"github.com/emanyzwww/plainship/internal/hash"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/protocol"
 	"github.com/emanyzwww/plainship/internal/state"
 )
-
-// ProtocolVersion 是当前同步协议版本.
-const ProtocolVersion = 1
-
-// FilePayload 是一个待同步的文件.
-type FilePayload struct {
-	Path    string `json:"path"`    // 相对站点根的路径, 例如 测试文档/index.html
-	Content string `json:"content"` // Base64 编码的文件内容
-	Hash    string `json:"hash"`    // 文件内容哈希
-}
-
-// Request 是同步请求体.
-type Request struct {
-	ProtocolVersion int           `json:"protocolVersion"`
-	SiteID          string        `json:"siteId"`
-	BuildID         string        `json:"buildId"`
-	Files           []FilePayload `json:"files"`
-	Deletes         []string      `json:"deletes"` // 相对路径列表
-	// FullSync 为 true 时服务器清空目标 release 目录后整体重建 (不继承旧版本),
-	// 用于服务器无历史版本或与本地构建不一致的场景, 防止陈旧文件残留.
-	FullSync bool `json:"fullSync"`
-}
-
-// Response 是服务器返回结果.
-type Response struct {
-	OK           bool   `json:"ok"`
-	Message      string `json:"message"`
-	BuildID      string `json:"buildId"`
-	Active       bool   `json:"active"`
-	StoredFiles  int    `json:"storedFiles"`
-	DeletedFiles int    `json:"deletedFiles"`
-}
 
 // Client 是同步客户端.
 type Client struct {
@@ -214,7 +184,7 @@ func (c *Client) StatusDetail() (published bool, active string, err error) {
 // Sync 执行一次完整同步.
 // fullSync 为 true 时全量上传所有文件 (服务器无历史版本或与本地不一致时使用).
 // 返回服务器响应. 成功后更新本地同步状态.
-func (c *Client) Sync(spaceRoot string, outputDir string, m *manifest.Manifest, fullSync bool) (*Response, error) {
+func (c *Client) Sync(spaceRoot string, outputDir string, m *manifest.Manifest, fullSync bool) (*protocol.Response, error) {
 	if c.ServerURL == "" {
 		return nil, i18n.Errorf(i18n.SyncNoServerURLSync)
 	}
@@ -227,20 +197,20 @@ func (c *Client) Sync(spaceRoot string, outputDir string, m *manifest.Manifest, 
 
 // SyncWithDiff 使用调用方已计算好的 diff 执行同步.
 // 避免 core.Publish 与 Sync 各自重复计算 diff (重复读盘 + TOCTOU).
-func (c *Client) SyncWithDiff(spaceRoot string, outputDir string, m *manifest.Manifest, fullSync bool, diff *DiffResult) (*Response, error) {
+func (c *Client) SyncWithDiff(spaceRoot string, outputDir string, m *manifest.Manifest, fullSync bool, diff *DiffResult) (*protocol.Response, error) {
 	if c.ServerURL == "" {
 		return nil, i18n.Errorf(i18n.SyncNoServerURLSync)
 	}
-	req := &Request{
-		ProtocolVersion: ProtocolVersion,
+	req := &protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          c.SiteID,
 		BuildID:         m.BuildID,
-		Files:           make([]FilePayload, 0, diff.UploadCount),
+		Files:           make([]protocol.FilePayload, 0, diff.UploadCount),
 		Deletes:         diff.Deletes,
 		FullSync:        fullSync,
 	}
 	for rel, data := range diff.Upload {
-		req.Files = append(req.Files, FilePayload{
+		req.Files = append(req.Files, protocol.FilePayload{
 			Path:    rel,
 			Content: base64.StdEncoding.EncodeToString(data),
 			Hash:    hash.Bytes(data),
@@ -275,7 +245,7 @@ func (c *Client) SyncWithDiff(spaceRoot string, outputDir string, m *manifest.Ma
 	if resp.StatusCode != http.StatusOK {
 		return nil, i18n.Errorf(i18n.SyncServerErr, resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
-	var result Response
+	var result protocol.Response
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, i18n.Errorf(i18n.SyncParseFail, err)
 	}

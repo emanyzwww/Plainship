@@ -1,4 +1,4 @@
-package cli
+package servercli
 
 import (
 	"os"
@@ -7,12 +7,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/emanyzwww/plainship/internal/clifx"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/server"
 	"github.com/emanyzwww/plainship/internal/style"
 )
 
-// newServeCmd 实现 plainship serve.
+// newServeCmd 实现 plainship-server serve.
 func newServeCmd() *cobra.Command {
 	var addr, dataDir, token string
 	cmd := &cobra.Command{
@@ -44,12 +45,12 @@ func newServeCmd() *cobra.Command {
 					return i18n.Errorf(i18n.CliServeTokenLoadFail, err)
 				}
 				if created {
-					printf(out, "%s\n", i18n.T(i18n.CliServeTokenGenerated, tokenFilePath(absData)))
+					clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeTokenGenerated, tokenFilePath(absData)))
 				}
 			}
 			srv := server.New(dataDir, token)
 			st := style.For(out)
-			printf(out, "%s\n", st.Green(i18n.T(i18n.CliServeStarted)))
+			clifx.Printf(out, "%s\n", st.Green(i18n.T(i18n.CliServeStarted)))
 			// 展示用监听地址: :9090 -> http://localhost:9090; 其它形式补全 http://.
 			listenURL := addr
 			if strings.HasPrefix(addr, ":") {
@@ -57,21 +58,21 @@ func newServeCmd() *cobra.Command {
 			} else if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
 				listenURL = "http://" + addr
 			}
-			printf(out, "%s\n", i18n.T(i18n.CliServeAddr, st.Cyan(listenURL)))
-			printf(out, "%s\n", i18n.T(i18n.CliServeDataDir, absData))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeAddr, st.Cyan(listenURL)))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeDataDir, absData))
 			sites := srv.PublishedSites()
 			if len(sites) == 0 {
-				printf(out, "%s\n", i18n.T(i18n.CliServeSitesNone))
+				clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeSitesNone))
 			} else {
-				printf(out, "%s\n", i18n.T(i18n.CliServeSites, strings.Join(sites, ", ")))
+				clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeSites, strings.Join(sites, ", ")))
 			}
-			printf(out, "%s\n", i18n.T(i18n.CliServeAuthOn))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeAuthOn))
 			// 醒目打印访问令牌, 供用户复制.
-			printf(out, "\n%s\n\n", i18n.T(i18n.CliServeTokenBox, st.Cyan(token)))
-			printf(out, "%s\n", i18n.T(i18n.CliServeSyncAPI))
-			printf(out, "%s\n", i18n.T(i18n.CliServeStatusAPI))
-			printf(out, "%s\n", i18n.T(i18n.CliServeSiteData))
-			printf(out, "\n")
+			clifx.Printf(out, "\n%s\n\n", i18n.T(i18n.CliServeTokenBox, st.Cyan(token)))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeSyncAPI))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeStatusAPI))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliServeSiteData))
+			clifx.Printf(out, "\n")
 			return srv.Serve(addr)
 		},
 	}

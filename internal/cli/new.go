@@ -1,9 +1,6 @@
 package cli
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/spf13/cobra"
 
 	"github.com/emanyzwww/plainship/internal/core"
@@ -52,12 +49,4 @@ func newNewCmd() *cobra.Command {
 	return cmd
 }
 
-// printf 向指定输出写入格式化内容.
-func printf(out io.Writer, format string, args ...any) {
-	fmt.Fprintf(out, format, args...)
-}
 
-// println 向指定输出写入一行内容.
-func println(out io.Writer, args ...any) {
-	fmt.Fprintln(out, args...)
-}

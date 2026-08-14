@@ -1,7 +1,8 @@
-// Package cli 实现 plainship 客户端命令行界面.
-// 客户端二进制 (cmd/plainship) 的入口; 服务端命令位于 internal/servercli.
+// Package servercli 实现 plainship-server 命令行界面.
+// 服务端二进制 (cmd/plainship-server) 的入口, 与客户端 CLI (internal/cli) 分离:
+// 只包含 serve / token / version 三个命令, 不含任何客户端构建与发布逻辑.
 // 共享的 CLI 框架件 (语言检测 / 错误渲染 / 控制台编码) 位于 internal/clifx.
-package cli
+package servercli
 
 import (
 	"os"
@@ -9,20 +10,18 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/emanyzwww/plainship/internal/clifx"
-	"github.com/emanyzwww/plainship/internal/format"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/style"
 	"github.com/emanyzwww/plainship/internal/version"
 )
 
-// newRootCmd 是 plainship 的根命令.
+// newRootCmd 是 plainship-server 的根命令.
 func newRootCmd() *cobra.Command {
 	var lang string
 	var noColor bool
 	root := &cobra.Command{
-		Use:           "plainship",
+		Use:           "plainship-server",
 		Short:         i18n.T(i18n.CliRootShort),
-		Long:          rootLong(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Version:       version.Version,
@@ -46,28 +45,13 @@ func newRootCmd() *cobra.Command {
 	}
 	root.PersistentFlags().StringVar(&lang, "lang", "", i18n.T(i18n.CliFlagLang))
 	root.PersistentFlags().BoolVar(&noColor, "no-color", false, i18n.T(i18n.CliFlagNoColor))
-	root.AddCommand(newNewCmd())
-	root.AddCommand(newCreateCmd())
-	root.AddCommand(newBuildCmd())
-	root.AddCommand(newPublishCmd())
-	root.AddCommand(newConnectCmd())
-	root.AddCommand(newStatusCmd())
-	root.AddCommand(newPreviewCmd())
-	root.AddCommand(newDevCmd())
-	root.AddCommand(newConfigCmd())
+	root.AddCommand(newServeCmd())
+	root.AddCommand(newTokenCmd())
 	root.AddCommand(newVersionCmd())
 	return root
 }
 
-// rootLong 渲染根命令帮助文本.
-func rootLong() string {
-	return format.NewLine().
-		Text(i18n.T(i18n.CliRootTitle)).Br().Br().
-		Text(i18n.T(i18n.CliRootTagline)).
-		String()
-}
-
-// Execute 执行客户端 CLI, 错误以当前语言输出到 stderr 并设置退出码.
+// Execute 执行服务端 CLI, 错误以当前语言输出到 stderr 并设置退出码.
 func Execute() {
 	// Windows 控制台默认使用 GBK 编码, 需要切换为 UTF-8 以正确显示中文.
 	clifx.SetConsoleUTF8()

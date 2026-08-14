@@ -11,7 +11,7 @@ import (
 
 	"github.com/emanyzwww/plainship/internal/fsutil"
 	"github.com/emanyzwww/plainship/internal/i18n"
-	"github.com/emanyzwww/plainship/internal/sync"
+	"github.com/emanyzwww/plainship/internal/protocol"
 )
 
 // handleSync 处理 POST /api/v1/sites/{siteID}/sync.
@@ -19,7 +19,7 @@ import (
 func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	siteID := r.PathValue("siteID")
 	if !siteIDPattern.MatchString(siteID) {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncSiteIDInvalid)})
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncSiteIDInvalid)})
 		return
 	}
 	if !s.checkAuth(w, r) {
@@ -27,25 +27,25 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxBodySize))
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBodyTooLarge)})
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBodyTooLarge)})
 		return
 	}
-	var req sync.Request
+	var req protocol.Request
 	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadJSON, err.Error())})
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadJSON, err.Error())})
 		return
 	}
 	// 校验协议版本与站点归属.
-	if req.ProtocolVersion != sync.ProtocolVersion {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncVersionMismatch, sync.ProtocolVersion, req.ProtocolVersion)})
+	if req.ProtocolVersion != protocol.ProtocolVersion {
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncVersionMismatch, protocol.ProtocolVersion, req.ProtocolVersion)})
 		return
 	}
 	if req.SiteID != siteID {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncSiteIDMismatch)})
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncSiteIDMismatch)})
 		return
 	}
 	if !buildIDPattern.MatchString(req.BuildID) {
-		writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBuildIDInvalid)})
+		writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBuildIDInvalid)})
 		return
 	}
 
@@ -56,12 +56,12 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	active, activeErr := s.activeBuildID(siteID)
 	if req.FullSync || activeErr != nil || active != req.BuildID {
 		if err := os.RemoveAll(dir); err != nil {
-			writeJSON(w, http.StatusInternalServerError, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncMkdirFail)})
+			writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncMkdirFail)})
 			return
 		}
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeJSON(w, http.StatusInternalServerError, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncMkdirFail)})
+		writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncMkdirFail)})
 		return
 	}
 	// 增量同步支持: 继承当前激活 release 的全部文件作为基底.
@@ -72,7 +72,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		prevDir := s.releaseDir(siteID, active)
 		if fsutil.IsDir(prevDir) {
 			if err := fsutil.CopyDir(prevDir, dir); err != nil {
-				writeJSON(w, http.StatusInternalServerError, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncInheritFail, err.Error())})
+				writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncInheritFail, err.Error())})
 				return
 			}
 		}
@@ -82,26 +82,26 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	for _, f := range req.Files {
 		rel, err := fsutil.SafeRelPath(f.Path)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadPath, f.Path)})
+			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadPath, f.Path)})
 			return
 		}
 		data, err := base64.StdEncoding.DecodeString(f.Content)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadEncoding, f.Path)})
+			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadEncoding, f.Path)})
 			return
 		}
 		if len(data) > MaxFileSize {
-			writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncFileTooLarge, f.Path)})
+			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncFileTooLarge, f.Path)})
 			return
 		}
 		// 限制单请求解码后的总字节数, 防止恶意请求拖垮内存.
 		totalDecoded += len(data)
 		if totalDecoded > MaxDecodedSize {
-			writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBodyTooLarge)})
+			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBodyTooLarge)})
 			return
 		}
 		if err := fsutil.WriteFile(filepath.Join(dir, rel), data); err != nil {
-			writeJSON(w, http.StatusInternalServerError, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncWriteFail, f.Path)})
+			writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncWriteFail, f.Path)})
 			return
 		}
 		stored++
@@ -110,7 +110,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	// 先全部校验, 任一非法则整体拒绝, 避免部分应用.
 	for _, d := range req.Deletes {
 		if _, err := fsutil.SafeRelPath(d); err != nil {
-			writeJSON(w, http.StatusBadRequest, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadDelete, d)})
+			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadDelete, d)})
 			return
 		}
 	}
@@ -135,10 +135,10 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 
 	// 原子激活: 先写临时文件再 rename.
 	if err := activateRelease(s, siteID, req.BuildID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, sync.Response{OK: false, Message: i18n.T(i18n.ServerSyncActivateFail, err.Error())})
+		writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncActivateFail, err.Error())})
 		return
 	}
-	writeJSON(w, http.StatusOK, sync.Response{
+	writeJSON(w, http.StatusOK, protocol.Response{
 		OK: true, BuildID: req.BuildID, Active: true,
 		StoredFiles: stored, DeletedFiles: len(req.Deletes),
 		Message: i18n.T(i18n.ServerSyncPublishOK),

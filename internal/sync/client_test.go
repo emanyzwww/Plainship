@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/protocol"
 	"github.com/emanyzwww/plainship/internal/space"
 	"github.com/emanyzwww/plainship/internal/state"
 )
@@ -187,11 +188,11 @@ func TestNormalizeServerURL(t *testing.T) {
 
 // TestRequestMarshal checks the protocol request shape.
 func TestRequestMarshal(t *testing.T) {
-	req := Request{
-		ProtocolVersion: ProtocolVersion,
+	req := protocol.Request{
+		ProtocolVersion: protocol.ProtocolVersion,
 		SiteID:          "my-docs",
 		BuildID:         "build-001",
-		Files: []FilePayload{{
+		Files: []protocol.FilePayload{{
 			Path:    "index.html",
 			Content: "aGk=",
 			Hash:    "abc",

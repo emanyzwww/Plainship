@@ -12,6 +12,7 @@ import (
 	"github.com/emanyzwww/plainship/internal/fsutil"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/manifest"
+	"github.com/emanyzwww/plainship/internal/protocol"
 	"github.com/emanyzwww/plainship/internal/revision"
 	"github.com/emanyzwww/plainship/internal/space"
 	"github.com/emanyzwww/plainship/internal/state"
@@ -21,7 +22,7 @@ import (
 
 // PublishResult 是一次 publish 的结果.
 type PublishResult struct {
-	Response *sync.Response
+	Response *protocol.Response
 }
 
 // Publish 发布到服务器: 只发布由已提交源码构建出的 build/ 内容.

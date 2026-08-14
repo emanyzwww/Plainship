@@ -1,4 +1,4 @@
-package cli
+package clifx
 
 import (
 	"errors"
@@ -34,9 +34,9 @@ var suggestions = map[i18n.Key]i18n.Key{
 	i18n.CliTokenNotFound: i18n.SuggestServeToken,
 }
 
-// suggestFor 返回错误对应的建议消息键; 无匹配时返回空键.
+// SuggestFor 返回错误对应的建议消息键; 无匹配时返回空键.
 // 支持被 Wrapf 包装的错误链 (errors.As).
-func suggestFor(err error) i18n.Key {
+func SuggestFor(err error) i18n.Key {
 	var me *i18n.MsgError
 	if !errors.As(err, &me) || me == nil {
 		return ""

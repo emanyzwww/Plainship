@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/emanyzwww/plainship/internal/clifx"
 	"github.com/emanyzwww/plainship/internal/i18n"
 )
 
@@ -45,7 +46,7 @@ func TestPreviewPlan_NotBuilt(t *testing.T) {
 func TestPreviewPlan_Suggest(t *testing.T) {
 	dir := t.TempDir()
 	err := previewPlanError(t, dir)
-	if got := suggestFor(err); got != i18n.SuggestBuildFirst {
+	if got := clifx.SuggestFor(err); got != i18n.SuggestBuildFirst {
 		t.Errorf("建议 = %q, want %q", got, i18n.SuggestBuildFirst)
 	}
 }

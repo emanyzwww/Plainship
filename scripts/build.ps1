@@ -1,18 +1,22 @@
-﻿# Plainship 一键交叉编译脚本
+# Plainship 一键交叉编译脚本
 #
 # 用法:
 #   ./scripts/build.ps1                   # 默认编译 linux / windows / macos (amd64)
 #   ./scripts/build.ps1 -Arch arm64       # 指定目标架构 (例如苹果 M 系列)
 #   ./scripts/build.ps1 -OutputDir dist   # 指定输出目录 (默认 bin)
+#   ./scripts/build.ps1 -ClientOnly       # 只构建客户端 (cmd/plainship)
+#   ./scripts/build.ps1 -ServerOnly       # 只构建服务端 (cmd/plainship-server)
 #
-# 产物:
-#   bin/plainship-linux-amd64
-#   bin/plainship-windows-amd64.exe
-#   bin/plainship-darwin-amd64
+# 产物 (默认两个二进制一起构建):
+#   bin/plainship-linux-amd64            客户端: 构建 + 发布 (cmd/plainship)
+#   bin/plainship-server-linux-amd64     服务端: 存储 + 同步 + 静态 HTTP (cmd/plainship-server)
+#   (windows / darwin 同理)
 
 param(
     [string]$Arch = "amd64",
-    [string]$OutputDir = "bin"
+    [string]$OutputDir = "bin",
+    [switch]$ClientOnly,
+    [switch]$ServerOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,8 +50,12 @@ if (-not $goExe) {
     exit 1
 }
 
-# 3. 准备输出目录.
-$out = Join-Path $repoRoot $OutputDir
+# 3. 准备输出目录 (绝对路径直接使用, 相对路径基于仓库根).
+if ([System.IO.Path]::IsPathRooted($OutputDir)) {
+    $out = $OutputDir
+} else {
+    $out = Join-Path $repoRoot $OutputDir
+}
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 
 Push-Location $repoRoot
@@ -67,14 +75,25 @@ try {
         @{ OS = "darwin";  Name = "plainship-darwin-$Arch" }
     )
 
+    # 二进制矩阵: 名称前缀 -> 入口包.
+    $binaries = @(
+        @{ Prefix = "plainship";        Pkg = "./cmd/plainship" },
+        @{ Prefix = "plainship-server"; Pkg = "./cmd/plainship-server" }
+    )
+    if ($ClientOnly) { $binaries = @(${binaries[0]}) }
+    if ($ServerOnly) { $binaries = @(${binaries[1]}) }
+
     foreach ($t in $targets) {
-        $env:GOOS = $t.OS
-        $env:GOARCH = $Arch
-        $dest = Join-Path $out $t.Name
-        Write-Host ("building {0}/{1} -> {2}" -f $t.OS, $Arch, $dest) -ForegroundColor Cyan
-        & $goExe build -trimpath -o $dest ./cmd/plainship
-        if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+        foreach ($b in $binaries) {
+            $env:GOOS = $t.OS
+            $env:GOARCH = $Arch
+            $name = $t.Name -replace '^plainship', $b.Prefix
+            $dest = Join-Path $out $name
+            Write-Host ("building {0}/{1} -> {2}" -f $t.OS, $Arch, $dest) -ForegroundColor Cyan
+            & $goExe build -trimpath -o $dest $b.Pkg
+            if ($LASTEXITCODE -ne 0) {
+                exit $LASTEXITCODE
+            }
         }
     }
 

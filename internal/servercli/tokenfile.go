@@ -1,6 +1,6 @@
 // tokenfile.go 负责服务器访问令牌的生成与持久化.
 // 令牌保存于数据目录下的 server.token 文件 (0600), 重启不改变.
-package cli
+package servercli
 
 import (
 	"crypto/rand"

@@ -1,5 +1,5 @@
-// token.go 实现 plainship token: 显示服务器访问令牌.
-package cli
+// token.go 实现 plainship-server token: 显示服务器访问令牌.
+package servercli
 
 import (
 	"os"
@@ -7,11 +7,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/emanyzwww/plainship/internal/clifx"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/style"
 )
 
-// newTokenCmd 实现 plainship token [--data <目录>].
+// newTokenCmd 实现 plainship-server token [--data <目录>].
 func newTokenCmd() *cobra.Command {
 	var dataDir string
 	cmd := &cobra.Command{
@@ -32,8 +33,8 @@ func newTokenCmd() *cobra.Command {
 				return err
 			}
 			st := style.For(out)
-			printf(out, "%s\n", st.Cyan(i18n.T(i18n.CliTokenValue, tok)))
-			printf(out, "%s\n", i18n.T(i18n.CliTokenSavedAt, tokenFilePath(absData)))
+			clifx.Printf(out, "%s\n", st.Cyan(i18n.T(i18n.CliTokenValue, tok)))
+			clifx.Printf(out, "%s\n", i18n.T(i18n.CliTokenSavedAt, tokenFilePath(absData)))
 			return nil
 		},
 	}

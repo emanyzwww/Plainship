@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Plainship 一键安装脚本 (Linux / macOS)
+# Plainship Server 一键安装脚本 (Linux / macOS)
+# 安装的是 plainship-server (仅服务端二进制, 不含客户端代码).
 #
 # 用法:
 #   curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/install.sh | bash
@@ -9,10 +10,12 @@
 # 行为:
 #   1. 探测操作系统与 CPU 架构
 #   2. 从 GitHub Releases 获取最新版本 (或 --version 指定版本)
-#   3. 下载匹配当前平台的二进制并校验 SHA-256 (可用 --no-verify 显式跳过)
+#   3. 下载匹配当前平台的 plainship-server 二进制并校验 SHA-256 (可用 --no-verify 显式跳过)
 #   4. 安装到 /usr/local/bin (无权限时 ~/.local/bin)
 #   5. 生成访问令牌, 启动服务 (有 systemd 时注册为服务, 否则 nohup 后台)
 #   6. 打印服务器地址与访问令牌
+#
+# 客户端请在客户机单独安装 plainship 二进制 (从 GitHub Releases 下载或 go install).
 #
 set -euo pipefail
 
@@ -96,7 +99,7 @@ case "$ARCH_RAW" in
   *) fail "unsupported architecture: $ARCH_RAW (only amd64 / arm64)" ;;
 esac
 
-BIN_NAME="plainship-$GOOS-$GOARCH"
+BIN_NAME="plainship-server-$GOOS-$GOARCH"
 
 # ---- 2. 解析版本与下载地址 ----
 if [ "$VERSION" = "latest" ]; then
@@ -164,14 +167,14 @@ if [ -z "$BIN_DIR" ]; then
 fi
 mkdir -p "$BIN_DIR"
 
-if [ -x "$BIN_DIR/plainship" ]; then
+if [ -x "$BIN_DIR/plainship-server" ]; then
   warn "old version installed; upgrading..."
 fi
 # 原子替换: 先复制到临时名再 mv (同文件系统内 mv 是原子的), 避免中断留下残缺文件.
 cp "$TMP_DIR/$BIN_NAME" "$BIN_DIR/.plainship.new" || fail "failed to copy to $BIN_DIR"
-mv -f "$BIN_DIR/.plainship.new" "$BIN_DIR/plainship"
-chmod +x "$BIN_DIR/plainship"
-ok "Plainship v$VER ($GOOS/$GOARCH) installed to $BIN_DIR/plainship"
+mv -f "$BIN_DIR/.plainship.new" "$BIN_DIR/plainship-server"
+chmod +x "$BIN_DIR/plainship-server"
+ok "Plainship Server v$VER ($GOOS/$GOARCH) installed to $BIN_DIR/plainship-server"
 
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
@@ -193,7 +196,7 @@ if [ -s "$TOKEN_FILE" ]; then
   TOKEN="$(cat "$TOKEN_FILE")"
   log "reusing existing access token"
 else
-  # 生成新的访问令牌 (与 plainship serve 的自动生成格式一致: ps_ + 32 hex).
+  # 生成新的访问令牌 (与 plainship-server serve 的自动生成格式一致: ps_ + 32 hex).
   if command -v openssl >/dev/null 2>&1; then
     TOKEN="ps_$(openssl rand -hex 16)"
   else
@@ -210,7 +213,7 @@ if [ "$GOOS" = "linux" ] && [ -d /run/systemd/system ] && command -v systemctl >
   if [ "$(id -u)" -ne 0 ]; then
     warn "systemd detected, but current user is not root; cannot register a system service; falling back to nohup background start"
   else
-    UNIT=/etc/systemd/system/plainship.service
+    UNIT=/etc/systemd/system/plainship-server.service
     cat > "$UNIT" <<EOF
 [Unit]
 Description=Plainship Server
@@ -218,7 +221,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart="$BIN_DIR/plainship" serve --addr "$ADDR" --data "$DATA_DIR"
+ExecStart="$BIN_DIR/plainship-server" serve --addr "$ADDR" --data "$DATA_DIR"
 Restart=always
 RestartSec=3
 
@@ -226,9 +229,9 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
-    systemctl enable plainship.service >/dev/null 2>&1 || true
-    systemctl restart plainship.service || fail "systemd service failed to start; run: systemctl status plainship"
-    ok "systemd service started: systemctl status plainship"
+    systemctl enable plainship-server.service >/dev/null 2>&1 || true
+    systemctl restart plainship-server.service || fail "systemd service failed to start; run: systemctl status plainship-server"
+    ok "systemd service started: systemctl status plainship-server"
     SERVER_READY=1
   fi
 fi
@@ -241,7 +244,7 @@ if [ "${SERVER_READY:-0}" != "1" ]; then
     kill "$(cat "$PID_FILE")" 2>/dev/null || true
     sleep 1
   fi
-  nohup "$BIN_DIR/plainship" serve --addr "$ADDR" --data "$DATA_DIR" >> "$LOG_FILE" 2>&1 &
+  nohup "$BIN_DIR/plainship-server" serve --addr "$ADDR" --data "$DATA_DIR" >> "$LOG_FILE" 2>&1 &
   PID=$!
   echo "$PID" > "$PID_FILE"
   sleep 1
@@ -289,7 +292,7 @@ $C_BOLD Plainship v$VER ready$C_RESET
     plainship connect http://$HOST:$PORT
     then paste the token, and run plainship publish
 
-  Forgot the token? On the server run: plainship token --data $DATA_DIR
+  Forgot the token? On the server run: plainship-server token --data $DATA_DIR
 $C_BOLD===========================================================$C_RESET
 
 EOF

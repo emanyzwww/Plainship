@@ -11,7 +11,6 @@ import (
 
 	"github.com/emanyzwww/plainship/internal/config"
 	"github.com/emanyzwww/plainship/internal/git"
-	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/server"
 	"github.com/emanyzwww/plainship/internal/version"
 )
@@ -354,47 +353,6 @@ func TestCLI_Version(t *testing.T) {
 	}
 }
 
-func TestCLI_Token_AutoGenerateAndPersist(t *testing.T) {
-	data := filepath.Join(t.TempDir(), "data")
-	// 首次调用生成并持久化.
-	tok1, created, err := LoadOrCreateToken(data)
-	if err != nil {
-		t.Fatalf("LoadOrCreateToken 失败: %v", err)
-	}
-	if !created {
-		t.Error("首次调用应生成新令牌")
-	}
-	if len(tok1) < 8 || tok1[:3] != "ps_" {
-		t.Errorf("令牌格式不正确: %q", tok1)
-	}
-	if !fileExists(filepath.Join(data, "server.token")) {
-		t.Error("令牌未持久化到 server.token")
-	}
-	// 再次调用应读取同一令牌, 不重新生成.
-	tok2, created2, err := LoadOrCreateToken(data)
-	if err != nil {
-		t.Fatalf("再次 LoadOrCreateToken 失败: %v", err)
-	}
-	if created2 || tok2 != tok1 {
-		t.Errorf("令牌未复用: created=%v tok2=%q tok1=%q", created2, tok2, tok1)
-	}
-	// token 命令应打印该令牌.
-	out, err := runCLI(t, t.TempDir(), "token", "--data", data)
-	if err != nil {
-		t.Fatalf("token 命令失败: %v\n%s", err, out)
-	}
-	if !strings.Contains(out, tok1) {
-		t.Errorf("token 命令输出缺少令牌: %s", out)
-	}
-}
-
-func TestCLI_Token_NotFound(t *testing.T) {
-	_, err := runCLI(t, t.TempDir(), "token", "--data", filepath.Join(t.TempDir(), "nope"))
-	if err == nil {
-		t.Fatal("令牌不存在时应报错")
-	}
-}
-
 func TestCLI_Connect(t *testing.T) {
 	srv := server.New(t.TempDir(), "test-token-123")
 	ts := httptest.NewServer(srv.Routes())
@@ -526,46 +484,5 @@ func TestCLI_Config_Global(t *testing.T) {
 	out, _ = runCLI(t, dir, "config", "get", "lang", "-g")
 	if strings.TrimSpace(out) != "zh" {
 		t.Errorf("get -g lang = %q, 期望 zh", out)
-	}
-}
-
-func TestDetectLang(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("USERPROFILE", home)
-	dir := t.TempDir()
-	if _, err := runCLI(t, dir, "new", dir); err != nil {
-		t.Fatalf("new 失败: %v", err)
-	}
-	oldWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(oldWD)
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-
-	// 默认 en.
-	if got := detectLang(); got != i18n.LangEN {
-		t.Errorf("默认 detectLang = %v, 期望 en", got)
-	}
-	// 全局 zh.
-	if _, err := runCLI(t, dir, "config", "set", "lang", "zh", "-g"); err != nil {
-		t.Fatal(err)
-	}
-	if got := detectLang(); got != i18n.LangZH {
-		t.Errorf("全局 zh 后 detectLang = %v", got)
-	}
-	// 项目 en 覆盖全局 zh.
-	if _, err := runCLI(t, dir, "config", "set", "lang", "en"); err != nil {
-		t.Fatal(err)
-	}
-	if got := detectLang(); got != i18n.LangEN {
-		t.Errorf("项目 en 应覆盖全局, detectLang = %v", got)
-	}
-	// 环境变量覆盖配置.
-	t.Setenv("PLAINSHIP_LANG", "zh")
-	if got := detectLang(); got != i18n.LangZH {
-		t.Errorf("环境变量应覆盖配置, detectLang = %v", got)
 	}
 }
