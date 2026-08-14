@@ -15,6 +15,8 @@ import (
 // TestDetectLang 验证语言链: 环境变量 > 项目配置 > 全局配置 > 默认.
 func TestDetectLang(t *testing.T) {
 	home := t.TempDir()
+	// 隔离用户主目录: Windows 用 USERPROFILE, Linux/macOS 用 HOME.
+	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	dir := t.TempDir()
 	if _, err := core.CreateSpace(dir); err != nil {

@@ -13,6 +13,11 @@ import (
 // 返回清理后的路径, 使用系统分隔符.
 func SafeRelPath(p string) (string, error) {
 	p = strings.ReplaceAll(p, "\\", "/")
+	// 显式拒绝 Windows 盘符前缀 (跨平台): filepath.VolumeName 只在 Windows
+	// 上识别 "C:", 非 Windows 平台会把 "C:/x" 当作合法相对路径, 必须自行检测.
+	if len(p) >= 2 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z')) && p[1] == ':' {
+		return "", os.ErrInvalid
+	}
 	p = strings.TrimPrefix(p, "/")
 	if p == "" {
 		return "", os.ErrInvalid

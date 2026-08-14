@@ -403,6 +403,8 @@ func TestCLI_Config_Project(t *testing.T) {
 	// 隔离真实全局配置: 项目层测试不应受机器上 ~/.plainship/config.yaml 残留影响.
 	// 同时重置包级 configGlobal (可能被其他测试的 -g 置位), 保证本测试自包含.
 	configGlobal = false
+	// 隔离用户主目录: Windows 用 USERPROFILE, Linux/macOS 用 HOME.
+	t.Setenv("HOME", t.TempDir())
 	t.Setenv("USERPROFILE", t.TempDir())
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "new", dir); err != nil {
@@ -461,6 +463,8 @@ func TestCLI_Config_Project(t *testing.T) {
 
 func TestCLI_Config_Global(t *testing.T) {
 	home := t.TempDir()
+	// 隔离用户主目录: Windows 用 USERPROFILE, Linux/macOS 用 HOME.
+	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "new", dir); err != nil {
