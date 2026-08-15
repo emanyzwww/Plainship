@@ -1,250 +1,78 @@
-// Package config 负责加载与保存 Plainship Space 的配置.
 package config
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
+	"reflect"
+	"strconv"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/emanyzwww/plainship/internal/hash"
-	"github.com/emanyzwww/plainship/internal/i18n"
-	"github.com/emanyzwww/plainship/internal/layout"
-	"gopkg.in/yaml.v3"
 )
 
-// FileName 是配置文件名
-const FileName = layout.ConfigFile
-
-// Dir 返回配置所在目录
-func Dir(spaceRoot string) string {
-	return spaceRoot
-}
-
-// Path 返回配置文件路径
-func Path(spaceRoot string) string {
-	return filepath.Join(spaceRoot, FileName)
-}
-
-// Config 是完整的 Plainship 配置
+// Config 是全项目唯一的配置对象, 分为四个域:
+//   - GlobalClient: 客户端 CLI 全局配置 `~/.plainship/config.yaml`.
+//   - GlobalServer: 服务端 CLI 全局配置 `~/.plainship/config.yaml`.
+//   - SpaceClient:  客户端 CLI 空间配置 `<space>/.plainship/config.yaml`.
+//   - SpaceSite:    空间网站配置 `<space>/plainship.yaml`.
+//
+// 生效值解析: `flag` > `env` > Space 域 > Global 域 > 默认值.
+//
+// flag/env 属于运行时层, 只影响本次运行, 永不落盘.
 type Config struct {
-	Site     SiteConfig     `yaml:"site"`
-	Build    BuildConfig    `yaml:"build"`
-	Theme    ThemeConfig    `yaml:"theme"`
-	List     ListConfig     `yaml:"list"`
-	Markdown MarkdownConfig `yaml:"markdown"`
-	Server   ServerConfig   `yaml:"server"`
+	GlobalClient GlobalClientConfig
+	GlobalServer GlobalServerConfig
+	SpaceClient  SpaceClientConfig
+	SpaceSite    SpaceSiteConfig
+	spaceRoot    string
+	runtime      map[string]string
 }
 
-// SiteConfig 是站点级配置
-type SiteConfig struct {
-	Title       string `yaml:"title"`
-	Description string `yaml:"description"`
-	URL         string `yaml:"url"`
-	Language    string `yaml:"language"`
-	SiteID      string `yaml:"siteId"`
+// SetSpaceRoot 记录 Space 根目录.
+func (c *Config) SetSpaceRoot(root string) {
+	c.spaceRoot = root
 }
 
-// BuildConfig 是构建配置
-type BuildConfig struct {
-	Output string `yaml:"output"`
-}
-
-// ThemeConfig 是主题配置
-type ThemeConfig struct {
-	Name string `yaml:"name"`
-}
-
-// ListConfig 是列表页排序配置
-type ListConfig struct {
-	Sort string `yaml:"sort"`
-}
-
-// MarkdownConfig 是 Markdown 渲染配置.
-type MarkdownConfig struct {
-	// Unsafe 为 true 时允许正文中的原始 HTML 直接输出 (不转义).
-	// 默认 false: 原始 HTML 会被转义为文本, 防止发布站点 XSS.
-	Unsafe bool `yaml:"unsafe"`
-}
-
-// ServerConfig 是远程服务器配置
-type ServerConfig struct {
-	URL   string `yaml:"url"`
-	Site  string `yaml:"site"`
-	Token string `yaml:"token"`
-}
-
-// Default 返回默认配置
-func Default() Config {
-	return Config{
-		Site: SiteConfig{
-			Title:       "我的文档",
-			Description: "Plainship 文档",
-			URL:         "https://example.com",
-			Language:    "en",
-			SiteID:      "my-docs",
-		},
-		Build: BuildConfig{
-			Output: layout.BuildDir,
-		},
-		Theme: ThemeConfig{
-			Name: "default",
-		},
-		List: ListConfig{
-			Sort: "date-desc",
-		},
-		Markdown: MarkdownConfig{
-			Unsafe: false,
-		},
-		Server: ServerConfig{
-			URL:  "",
-			Site: "my-docs",
-		},
+// Lang 返回客户端 CLI 工具语言的生效值.
+func (c *Config) Lang() string {
+	if v, ok := c.runtime["lang"]; ok {
+		return v
 	}
+	if c.SpaceClient.Lang.HasValue() {
+		return c.SpaceClient.Lang.Get()
+	}
+	return c.GlobalClient.Lang.Get()
 }
 
-// Load 加载配置
-// 读取根目录 plainship.yaml
-// 如果文件不存在, 返回默认配置而不报错
-func Load(spaceRoot string) (Config, error) {
-	// 默认配置
-	cfg := Default()
-	// 默认 path
-	path := Path(spaceRoot)
-	// 配置文件是否存在
-	exists := fileExists(path)
-
-	if !exists {
-		return cfg, nil
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg, err
-	}
-
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return cfg, i18n.Errorf(i18n.ConfigParseFail, err)
-	}
-
-	// 令牌从 .plainship/server.token 读取 (兼容旧版 yaml 内联令牌).
-	if cfg.Server.Token == "" {
-		cfg.Server.Token = loadToken(spaceRoot)
-	}
-
-	return cfg, nil
-}
-
-// Save 写入配置
-// 写入根目录 plainship.yaml.
-// 访问令牌不写入 yaml (避免随 config 类别提交进 Git 历史),
-// 而是单独保存到 .plainship/server.token (0600, 已被 .gitignore 忽略).
-func Save(spaceRoot string, cfg Config) error {
-	token := cfg.Server.Token
-	cfg.Server.Token = ""
-
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(Path(spaceRoot), data, 0o644); err != nil {
-		return err
-	}
-
-	if token != "" {
-		return saveToken(spaceRoot, token)
-	}
-	return nil
-}
-
-// tokenFilePath 返回 Space 内令牌文件路径 (.plainship/server.token).
-// 该目录被 .gitignore 忽略, 令牌不会进入 Git.
-func tokenFilePath(spaceRoot string) string {
-	return filepath.Join(spaceRoot, layout.StateDir, "server.token")
-}
-
-// saveToken 将令牌写入 .plainship/server.token, 权限 0600.
-func saveToken(spaceRoot, token string) error {
-	if err := os.MkdirAll(filepath.Dir(tokenFilePath(spaceRoot)), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(tokenFilePath(spaceRoot), []byte(token+"\n"), 0o600)
-}
-
-// loadToken 读取 Space 内令牌文件, 不存在时返回空字符串.
-func loadToken(spaceRoot string) string {
-	data, err := os.ReadFile(tokenFilePath(spaceRoot))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(data))
-}
-
-// Hash 计算配置的规范化哈希, 用于变化检测
-// 令牌不属于内容指纹: connect 更换令牌不应使构建过期.
-func (cfg Config) Hash() (string, error) {
-	cfg.Server.Token = ""
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return "", err
-	}
-
-	return hash.Bytes(data), nil
-}
-
-// FileHash 读取配置文件并计算哈希
-// 文件不存在时返回空字符串且不报错
-func FileHash(spaceRoot string) (string, error) {
-	path := Path(spaceRoot)
-	if !fileExists(path) {
-		return "", nil
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-
-	return hash.Bytes(data), nil
-}
-
-// IsSpaceRoot 判断目录是否为 Plainship Space 根目录
-func IsSpaceRoot(dir string) bool {
-	return dirExists(dir) && fileExists(filepath.Join(dir, layout.ConfigFile))
-}
-
-// FindRoot 从 dir 向上逐级查找 Space 根目录
-func FindRoot(dir string) (string, error) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return "", err
-	}
-
-	cur := abs
-
-	for {
-		if IsSpaceRoot(cur) {
-			return cur, nil
+// Color 返回客户端 CLI 彩色输出的生效值.
+func (c *Config) Color() bool {
+	if v, ok := c.runtime["color"]; ok {
+		b, err := strconv.ParseBool(v)
+		if err == nil {
+			return b
 		}
-
-		parent := filepath.Dir(cur)
-
-		if parent == cur {
-			return "", i18n.Errorf(i18n.ConfigNotFound)
-		}
-
-		cur = parent
+		return c.GlobalClient.Color.Get()
 	}
+	if c.SpaceClient.Color.HasValue() {
+		return c.SpaceClient.Color.Get()
+	}
+	return c.GlobalClient.Color.Get()
 }
 
-// dirExists 判断目录是否存在
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
+// ServerToken 返回发布访问令牌的生效值.
+func (c *Config) ServerToken() string {
+	return c.SpaceClient.ServerToken.Get()
 }
 
-// fileExists 判断文件是否存在
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
+// Hash 计算空间网站配置的规范化哈希, 用于变化检测.
+func (c *Config) Hash() (string, error) {
+	m := map[string]any{}
+	site := reflect.ValueOf(c).Elem().FieldByName("SpaceSite")
+	walkItems(site, func(it Item) {
+		setNested(m, it.Name(), it.Effective())
+	})
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	return hash.Bytes(data), nil
 }

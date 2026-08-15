@@ -7,10 +7,8 @@ package clifx
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
-	"github.com/emanyzwww/plainship/internal/cliconfig"
 	"github.com/emanyzwww/plainship/internal/config"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/style"
@@ -27,21 +25,18 @@ func Println(out io.Writer, args ...any) {
 }
 
 // DetectLang 返回 CLI 工具语言.
-// 优先级: PLAINSHIP_LANG 环境变量 > 项目配置 (lang) > 全局配置 (lang) > 默认 en.
+// 优先级由 cfg 包统一处理: 环境变量 > 项目配置 (lang) > 全局配置 (lang) > 默认 en.
 // --lang 参数由 ApplyLangEarly 在更早阶段覆盖.
 func DetectLang() i18n.Lang {
-	if v := os.Getenv("PLAINSHIP_LANG"); v != "" {
-		return i18n.Parse(v)
+	root := ""
+	if r, err := config.FindRoot("."); err == nil {
+		root = r
 	}
-	if root, err := config.FindRoot("."); err == nil {
-		if cfg, err := cliconfig.LoadProject(root); err == nil && cfg.Lang != "" {
-			return i18n.Parse(cfg.Lang)
-		}
+	c, _, err := config.Load(root, nil)
+	if err != nil {
+		return i18n.DefaultLang()
 	}
-	if cfg, err := cliconfig.LoadGlobal(); err == nil && cfg.Lang != "" {
-		return i18n.Parse(cfg.Lang)
-	}
-	return i18n.DefaultLang()
+	return i18n.Parse(c.Lang())
 }
 
 // ApplyLangEarly 在构造命令树之前预扫描 --lang 参数.

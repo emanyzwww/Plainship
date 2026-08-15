@@ -50,8 +50,8 @@ func TestCreate_BasicStructure(t *testing.T) {
 		t.Error("缺少 .plainship/builds")
 	}
 	// 默认主题可加载.
-	if s.Config.Theme.Name != "default" {
-		t.Errorf("主题 = %q", s.Config.Theme.Name)
+	if s.Config.SpaceSite.ThemeName.Get() != "default" {
+		t.Errorf("主题 = %q", s.Config.SpaceSite.ThemeName.Get())
 	}
 }
 

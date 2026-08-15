@@ -49,7 +49,7 @@ func BasePath(s *space.Space, dev bool) string {
 	if dev {
 		return ""
 	}
-	u, err := url.Parse(strings.TrimRight(s.Config.Site.URL, "/"))
+	u, err := url.Parse(strings.TrimRight(s.Config.SpaceSite.SiteURL.Get(), "/"))
 	if err != nil || u.Host == "" || u.Path == "" || u.Path == "/" {
 		return ""
 	}
@@ -89,13 +89,13 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	siteLang := i18n.Parse(s.Config.Site.Language)
+	siteLang := i18n.Parse(s.Config.SpaceSite.SiteLanguage.Get())
 	base := BasePath(s, dev)
-	themeObj, err := theme.Load(s.Root, s.Config.Theme.Name, siteLang, base)
+	themeObj, err := theme.Load(s.Root, s.Config.SpaceSite.ThemeName.Get(), siteLang, base)
 	if err != nil {
 		return nil, err
 	}
-	themeHash, err := themeDirHash(s.Root, s.Config.Theme.Name, themeObj)
+	themeHash, err := themeDirHash(s.Root, s.Config.SpaceSite.ThemeName.Get(), themeObj)
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +184,10 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 
 	res := &Result{BuildID: buildID, BuildPath: s.BuildDir()}
 	site := model.Site{
-		Title:       s.Config.Site.Title,
-		Description: s.Config.Site.Description,
-		URL:         strings.TrimRight(s.Config.Site.URL, "/"),
-		Language:    s.Config.Site.Language,
+		Title:       s.Config.SpaceSite.SiteTitle.Get(),
+		Description: s.Config.SpaceSite.SiteDescription.Get(),
+		URL:         strings.TrimRight(s.Config.SpaceSite.SiteURL.Get(), "/"),
+		Language:    s.Config.SpaceSite.SiteLanguage.Get(),
 		BaseURL:     base,
 	}
 	// 6. 解析文档 (仅完整解析发生变化的文档, 未变化的复用状态缓存).
@@ -197,7 +197,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 	parsed := map[string]*model.Document{}
 	unchangedDocs := map[string]*model.Document{}
 	newStateFiles := map[string]state.FileState{}
-	manifestInstance := manifest.New(buildID, s.Config.Site.SiteID, hash.Inputs(map[string]string{
+	manifestInstance := manifest.New(buildID, s.Config.SpaceSite.SiteID.Get(), hash.Inputs(map[string]string{
 		"config": cfgHash, "theme": themeHash, "renderer": version.RendererVersion(),
 	}))
 
@@ -226,7 +226,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 		}
 		doc, err := parser.Parse(content, srcRel,
 			parser.WithLinkResolver(resolver.ResolveLink),
-			parser.WithUnsafe(s.Config.Markdown.Unsafe))
+			parser.WithUnsafe(s.Config.SpaceSite.MarkdownUnsafe.Get()))
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +279,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 
 	// 8. 生成列表信息并计算上一篇 / 下一篇.
 	allInfo := collectDocInfos(parsed, unchangedDocs)
-	sortDocs(allInfo, s.Config.List.Sort)
+	sortDocs(allInfo, s.Config.SpaceSite.ListSort.Get())
 	prevNext := computePrevNext(allInfo)
 
 	// 记录每篇文档的上一篇/下一篇路由到状态, 供下次增量构建检测关联变化.
@@ -357,7 +357,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 		}
 		full, err := parser.Parse(content, doc.SourcePath,
 			parser.WithLinkResolver(resolver.ResolveLink),
-			parser.WithUnsafe(s.Config.Markdown.Unsafe))
+			parser.WithUnsafe(s.Config.SpaceSite.MarkdownUnsafe.Get()))
 		if err != nil {
 			return nil, err
 		}

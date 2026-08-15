@@ -265,9 +265,10 @@ func TestCLI_Publish_RefusesUncommitted(t *testing.T) {
 	}
 	setGitIdentity(t, dir)
 	writeDoc(t, dir, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(dir)
-	cfg.Server.URL = "http://127.0.0.1:1"
-	if err := config.Save(dir, cfg); err != nil {
+	c, _, _ := config.Load(dir, nil)
+	c.SetSpaceRoot(dir)
+	_ = c.SpaceSite.ServerURL.Set("http://127.0.0.1:1")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runCLI(t, dir, "build"); err != nil {
@@ -289,9 +290,10 @@ func TestCLI_Publish_RefusesNotBuilt(t *testing.T) {
 	}
 	setGitIdentity(t, dir)
 	writeDoc(t, dir, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(dir)
-	cfg.Server.URL = "http://127.0.0.1:1"
-	if err := config.Save(dir, cfg); err != nil {
+	c, _, _ := config.Load(dir, nil)
+	c.SetSpaceRoot(dir)
+	_ = c.SpaceSite.ServerURL.Set("http://127.0.0.1:1")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	// 手动提交源码 (模拟内容已提交但从未 build 的状态).
@@ -317,9 +319,10 @@ func TestCLI_Publish_Success(t *testing.T) {
 	}
 	setGitIdentity(t, dir)
 	writeDoc(t, dir, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(dir)
-	cfg.Server.URL = ts.URL
-	if err := config.Save(dir, cfg); err != nil {
+	c, _, _ := config.Load(dir, nil)
+	c.SetSpaceRoot(dir)
+	_ = c.SpaceSite.ServerURL.Set(ts.URL)
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := runCLI(t, dir, "build"); err != nil {
@@ -371,21 +374,21 @@ func TestCLI_Connect(t *testing.T) {
 	if !strings.Contains(out, "Connected to server") {
 		t.Errorf("connect 输出缺少成功提示: %s", out)
 	}
-	cfg, err := config.Load(dir)
+	c, _, err := config.Load(dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Server.URL != ts.URL || cfg.Server.Token != "test-token-123" {
-		t.Errorf("配置未正确写入: url=%q token=%q", cfg.Server.URL, cfg.Server.Token)
+	if c.SpaceSite.ServerURL.Get() != ts.URL || c.SpaceClient.ServerToken.Get() != "test-token-123" {
+		t.Errorf("配置未正确写入: url=%q token=%q", c.SpaceSite.ServerURL.Get(), c.SpaceClient.ServerToken.Get())
 	}
 
 	// 错误令牌: 连接应失败且不写入配置.
 	if _, err := runCLI(t, dir, "connect", ts.URL, "--token", "wrong"); err == nil {
 		t.Fatal("错误令牌应连接失败")
 	}
-	cfg2, _ := config.Load(dir)
-	if cfg2.Server.Token != "test-token-123" {
-		t.Errorf("连接失败后配置不应被覆盖: %q", cfg2.Server.Token)
+	c2, _, _ := config.Load(dir, nil)
+	if c2.SpaceClient.ServerToken.Get() != "test-token-123" {
+		t.Errorf("连接失败后配置不应被覆盖: %q", c2.SpaceClient.ServerToken.Get())
 	}
 }
 

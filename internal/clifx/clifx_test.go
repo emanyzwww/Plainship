@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/plainship/internal/cliconfig"
+	"github.com/emanyzwww/plainship/internal/config"
 	"github.com/emanyzwww/plainship/internal/core"
 	"github.com/emanyzwww/plainship/internal/i18n"
 )
@@ -36,14 +36,23 @@ func TestDetectLang(t *testing.T) {
 		t.Errorf("默认 DetectLang = %v, 期望 en", got)
 	}
 	// 全局 zh.
-	if err := cliconfig.SaveGlobal(cliconfig.Config{Lang: "zh"}); err != nil {
+	c := config.Default()
+	if err := c.GlobalClient.Lang.Set("zh"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := config.Save(c, config.SaveGlobal); err != nil {
 		t.Fatal(err)
 	}
 	if got := DetectLang(); got != i18n.LangZH {
 		t.Errorf("全局 zh 后 DetectLang = %v", got)
 	}
 	// 项目 en 覆盖全局 zh.
-	if err := cliconfig.SaveProject(dir, cliconfig.Config{Lang: "en"}); err != nil {
+	c2 := config.Default()
+	c2.SetSpaceRoot(dir)
+	if err := c2.SpaceClient.Lang.Set("en"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := config.Save(c2, config.SaveProject); err != nil {
 		t.Fatal(err)
 	}
 	if got := DetectLang(); got != i18n.LangEN {

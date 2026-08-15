@@ -1,6 +1,8 @@
 // codeblock.go 自定义代码块渲染: 构建期语法高亮 (chroma) + 语言标识.
 // 输出结构:
-//   <pre class="chroma code-block" data-language="go"><code>...</code></pre>
+//
+//	<pre class="chroma code-block" data-language="go"><code>...</code></pre>
+//
 // 高亮配色由主题 assets 中的 chroma CSS (github 主题) 提供.
 // 未知语言 / 无语言代码块降级为转义纯文本, 仍保留 code-block 样式.
 package parser

@@ -42,7 +42,7 @@ func Publish(spaceRoot string, out io.Writer) (*PublishResult, error) {
 	printl("Plainship v%s", version.Version)
 	printl("")
 
-	if s.Config.Server.URL == "" {
+	if s.Config.SpaceSite.ServerURL.Get() == "" {
 		return nil, i18n.Errorf(i18n.CorePublishNoServerURL)
 	}
 	if !s.GitAvailable || !revision.IsRepo(s) {
@@ -92,11 +92,11 @@ func Publish(spaceRoot string, out io.Writer) (*PublishResult, error) {
 
 	// 同步.
 	printl(i18n.T(i18n.CorePublishPublishing, bs.BuildNumber))
-	token := s.Config.Server.Token
+	token := s.Config.ServerToken()
 	if token == "" {
 		token = os.Getenv("PLAINSHIP_TOKEN")
 	}
-	client := sync.New(s.Config.Server.URL, s.Config.Server.Site, token)
+	client := sync.New(s.Config.SpaceSite.ServerURL.Get(), s.Config.SpaceSite.ServerSite.Get(), token)
 	published, active, err := client.StatusDetail()
 	if err != nil {
 		return nil, i18n.Errorf(i18n.CorePublishStatusFail, err)

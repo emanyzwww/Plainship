@@ -56,7 +56,7 @@ func confirmPublish(cmd *cobra.Command, root string) bool {
 	}
 	// 发布摘要: 站点 / 构建编号 / 文件数 / 目标服务器.
 	rep, _ := core.Status(root)
-	cfg, _ := config.Load(root)
+	c, _, _ := config.Load(root, nil)
 	buildNum := rep.BuildNumber
 	if buildNum == "" {
 		buildNum = i18n.T(i18n.CliPreviewUnbuilt)
@@ -65,7 +65,7 @@ func confirmPublish(cmd *cobra.Command, root string) bool {
 	if n, err := fsutil.ListFiles(filepath.Join(root, layout.BuildDir)); err == nil {
 		files = len(n)
 	}
-	prompt := i18n.T(i18n.CliPublishConfirm, cfg.Server.Site, buildNum, files, cfg.Server.URL)
+	prompt := i18n.T(i18n.CliPublishConfirm, c.SpaceSite.ServerSite.Get(), buildNum, files, c.SpaceSite.ServerURL.Get())
 	if !askConfirm(stdin, prompt, cmd.OutOrStdout()) {
 		st := style.For(cmd.OutOrStdout())
 		fmt.Fprintln(cmd.OutOrStdout(), st.Yellow(i18n.T(i18n.CliPublishCancelled)))

@@ -22,8 +22,8 @@ type Space struct {
 	GitRoot string
 	// GitAvailable 表示 Git 是否可用
 	GitAvailable bool
-	// Config 是加载后的配置
-	Config config.Config
+	// Config 是加载后的生效配置 (cfg 统一模型)
+	Config *config.Config
 }
 
 // DocsDir 返回 docs 目录路径.
@@ -63,8 +63,9 @@ func Create(root string) (*Space, error) {
 	}
 
 	// 写入默认配置
-	cfg := config.Default()
-	if err := config.Save(abs, cfg); err != nil {
+	c := config.Default()
+	c.SetSpaceRoot(abs)
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		return nil, i18n.Errorf(i18n.SpaceSaveConfigFail, err)
 	}
 	// 4. 生成默认主题.
@@ -75,7 +76,7 @@ func Create(root string) (*Space, error) {
 	if err := state.EnsureDirs(abs); err != nil {
 		return nil, i18n.Errorf(i18n.SpaceStateFail, err)
 	}
-	s := &Space{Root: abs, Config: cfg, GitAvailable: git.Available()}
+	s := &Space{Root: abs, Config: c, GitAvailable: git.Available()}
 
 	// 6. Git 感知.
 	if s.GitAvailable {
@@ -109,11 +110,12 @@ func Load(root string) (*Space, error) {
 	if !config.IsSpaceRoot(abs) {
 		return nil, i18n.Errorf(i18n.SpaceNotFound, abs)
 	}
-	cfg, err := config.Load(abs)
+	c, _, err := config.Load(abs, nil)
 	if err != nil {
 		return nil, err
 	}
-	s := &Space{Root: abs, Config: cfg, GitAvailable: git.Available()}
+	c.SetSpaceRoot(abs)
+	s := &Space{Root: abs, Config: c, GitAvailable: git.Available()}
 	if s.GitAvailable && git.IsRepo(abs) {
 		s.GitRoot, _ = git.Root(abs)
 	}

@@ -29,10 +29,11 @@ func newConnectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg, err := config.Load(root)
+			c, _, err := config.Load(root, nil)
 			if err != nil {
 				return err
 			}
+			c.SetSpaceRoot(root)
 
 			url := sync.NormalizeServerURL(args[0])
 			if url == "" {
@@ -54,19 +55,27 @@ func newConnectCmd() *cobra.Command {
 			}
 
 			// 验证连接与令牌 (GET status; 令牌错误时服务器返回 401).
-			client := sync.New(url, cfg.Server.Site, token)
+			client := sync.New(url, c.SpaceSite.ServerSite.Get(), token)
 			if _, err := client.Status(); err != nil {
 				return i18n.Errorf(i18n.CliConnectVerifyFail, err)
 			}
 
-			cfg.Server.URL = url
-			cfg.Server.Token = token
-			if err := config.Save(root, cfg); err != nil {
+			if err := c.SpaceSite.ServerURL.Set(url); err != nil {
+				return err
+			}
+			if err := c.SpaceClient.ServerToken.Set(token); err != nil {
+				return err
+			}
+			if _, err := config.Save(c, config.SaveSpace); err != nil {
+				return i18n.Errorf(i18n.CliConnectSaveFail, err)
+			}
+			// 令牌单独持久化到 .plainship/server.token.
+			if _, err := config.Save(c, config.SaveProject); err != nil {
 				return i18n.Errorf(i18n.CliConnectSaveFail, err)
 			}
 			st := style.For(out)
 			printf(out, "%s\n", st.Green(i18n.T(i18n.CliConnectOk, url)))
-			printf(out, "%s\n", i18n.T(i18n.CliConnectNext, cfg.Server.Site))
+			printf(out, "%s\n", i18n.T(i18n.CliConnectNext, c.SpaceSite.ServerSite.Get()))
 			return nil
 		},
 	}

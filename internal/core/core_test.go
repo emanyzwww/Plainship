@@ -117,9 +117,10 @@ func TestBuild_SplitCommitsAllCategories(t *testing.T) {
 	}
 
 	// 同时修改 config / theme / docs.
-	cfg, _ := config.Load(s.Root)
-	cfg.Site.Title = "新标题"
-	if err := config.Save(s.Root, cfg); err != nil {
+	c, _, _ := config.Load(s.Root, nil)
+	c.SetSpaceRoot(s.Root)
+	_ = c.SpaceSite.SiteTitle.Set("新标题")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	cssPath := filepath.Join(s.ThemesDir(), "default", "assets", "app.css")
@@ -189,9 +190,10 @@ func TestBuild_FailureNoCommit(t *testing.T) {
 func TestPublish_RefusesUncommitted(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(s.Root)
-	cfg.Server.URL = "http://127.0.0.1:1"
-	if err := config.Save(s.Root, cfg); err != nil {
+	c, _, _ := config.Load(s.Root, nil)
+	c.SetSpaceRoot(s.Root)
+	_ = c.SpaceSite.ServerURL.Set("http://127.0.0.1:1")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Build(s.Root, BuildOptions{}, nil); err != nil {
@@ -207,9 +209,10 @@ func TestPublish_RefusesUncommitted(t *testing.T) {
 func TestPublish_RefusesNotBuilt(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(s.Root)
-	cfg.Server.URL = "http://127.0.0.1:1"
-	if err := config.Save(s.Root, cfg); err != nil {
+	c, _, _ := config.Load(s.Root, nil)
+	c.SetSpaceRoot(s.Root)
+	_ = c.SpaceSite.ServerURL.Set("http://127.0.0.1:1")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	// 手动提交源码 (从未 build).
@@ -227,9 +230,10 @@ func TestPublish_RefusesNotBuilt(t *testing.T) {
 func TestPublish_RefusesRebuildNeeded(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "测试文档.md", "测试文档")
-	cfg, _ := config.Load(s.Root)
-	cfg.Server.URL = "http://127.0.0.1:1"
-	if err := config.Save(s.Root, cfg); err != nil {
+	c, _, _ := config.Load(s.Root, nil)
+	c.SetSpaceRoot(s.Root)
+	_ = c.SpaceSite.ServerURL.Set("http://127.0.0.1:1")
+	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Build(s.Root, BuildOptions{}, nil); err != nil {

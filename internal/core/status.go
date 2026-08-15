@@ -41,7 +41,7 @@ func Status(spaceRoot string) (*StatusReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	rep := &StatusReport{SpaceRoot: s.Root, ServerURL: s.Config.Server.URL}
+	rep := &StatusReport{SpaceRoot: s.Root, ServerURL: s.Config.SpaceSite.ServerURL.Get()}
 	gs := revision.GitStatus(s)
 	rep.GitAvailable = gs.Available
 	rep.HasRepo = gs.IsRepo
@@ -111,7 +111,7 @@ func buildOutdated(s *space.Space, bs *state.BuildState) bool {
 // currentThemeHash 计算当前 Space 主题目录的联合哈希.
 // 主题目录不存在 (使用内嵌主题) 时返回空字符串, 由 RendererVersion 覆盖.
 func currentThemeHash(s *space.Space) (string, error) {
-	dir := filepath.Join(s.ThemesDir(), s.Config.Theme.Name)
+	dir := filepath.Join(s.ThemesDir(), s.Config.SpaceSite.ThemeName.Get())
 	if !fsutil.IsDir(dir) {
 		return "", nil
 	}

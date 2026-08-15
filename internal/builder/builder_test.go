@@ -171,7 +171,7 @@ func TestBuild_ConfigChangeForcesRebuild(t *testing.T) {
 		t.Fatalf("首次构建失败: %v", err)
 	}
 	// 修改配置标题.
-	s.Config.Site.Title = "新标题"
+	_ = s.Config.SpaceSite.SiteTitle.Set("新标题")
 	res, err := Build(s, nil)
 	if err != nil {
 		t.Fatalf("构建失败: %v", err)
@@ -294,7 +294,7 @@ func TestBuild_MarkdownUnsafeConfig(t *testing.T) {
 	}
 
 	// 开启 unsafe.
-	s.Config.Markdown.Unsafe = true
+	_ = s.Config.SpaceSite.MarkdownUnsafe.Set(true)
 	if _, err := Build(s, nil); err != nil {
 		t.Fatalf("构建失败: %v", err)
 	}
@@ -470,7 +470,7 @@ func TestBuild_PrevNextRefreshOnIncremental(t *testing.T) {
 
 func TestBuild_BasePathAndDev(t *testing.T) {
 	s := setupSpace(t)
-	s.Config.Site.URL = "https://example.com/blog"
+	_ = s.Config.SpaceSite.SiteURL.Set("https://example.com/blog")
 	writeDoc(t, s, "docs/a.md", "---\ntitle: A\ndate: 2026-01-01\n---\n[去 B](./b.md)")
 	writeDoc(t, s, "docs/b.md", "---\ntitle: B\ndate: 2026-01-02\n---\n内容")
 
