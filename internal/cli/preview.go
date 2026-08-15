@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"net"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 	"github.com/emanyzwww/plainship/internal/layout"
 	"github.com/emanyzwww/plainship/internal/space"
 	"github.com/emanyzwww/plainship/internal/state"
-	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
 // previewInfo 是 preview 命令的构建摘要.
@@ -27,8 +28,9 @@ type previewInfo struct {
 	DevBuild    bool
 }
 
-// previewPlan 检查 build/ 状态并返回预览摘要.
-// build/ 不存在时返回错误 (由 suggest 机制给出构建建议).
+// previewPlan 检查 `build/` 状态并返回预览摘要.
+//
+// `build/` 不存在时返回错误, 由 suggest 机制给出构建建议.
 func previewPlan(root string) (*previewInfo, error) {
 	if !fsutil.IsDir(filepath.Join(root, layout.BuildDir)) {
 		return nil, i18n.Errorf(i18n.CliPreviewNotBuilt)
@@ -67,7 +69,7 @@ func openBrowser(url string) error {
 	return cmd.Start()
 }
 
-// newPreviewCmd 实现 plainship preview: 本地服务 build/ 生产产物, 供发布前验收.
+// newPreviewCmd 实现 plainship preview: 本地服务 `build/` 生产产物, 供发布前验收.
 func newPreviewCmd() *cobra.Command {
 	var addr string
 	var open bool
@@ -77,8 +79,7 @@ func newPreviewCmd() *cobra.Command {
 		Long:  i18n.T(i18n.CliPreviewLong),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
-			st := style.For(out)
+			u := newUI(cmd)
 			root, err := findSpaceRoot(cmd)
 			if err != nil {
 				return err
@@ -88,10 +89,10 @@ func newPreviewCmd() *cobra.Command {
 				return err
 			}
 			if info.Outdated {
-				println(out, st.Yellow(i18n.T(i18n.CliPreviewOutdated)))
+				u.Info(ui.Yellow(i18n.T(i18n.CliPreviewOutdated)))
 			}
 			if info.DevBuild {
-				println(out, st.Yellow(i18n.T(i18n.CliPreviewDevBuild)))
+				u.Info(ui.Yellow(i18n.T(i18n.CliPreviewDevBuild)))
 			}
 			// 展示用监听地址: :8080 -> http://localhost:8080; 其它形式补全 http://.
 			listenURL := addr
@@ -104,13 +105,19 @@ func newPreviewCmd() *cobra.Command {
 			if num == "" {
 				num = i18n.T(i18n.CliPreviewUnbuilt)
 			}
-			println(out, st.Green(i18n.T(i18n.CliPreviewServe, listenURL, num, info.DocCount)))
+			u.Info(ui.Green(i18n.T(i18n.CliPreviewServe, listenURL, num, info.DocCount)))
 			if open {
 				if err := openBrowser(listenURL); err != nil {
-					println(out, st.Yellow(i18n.T(i18n.CliPreviewOpenFail, err)))
+					u.Info(ui.Yellow(i18n.T(i18n.CliPreviewOpenFail, err)))
 				}
 			}
-			return http.ListenAndServe(addr, previewHandler(filepath.Join(root, layout.BuildDir)))
+			// 端口预检: 先监听, 端口被占用时立即报错.
+			ln, err := net.Listen("tcp", addr)
+			if err != nil {
+				return i18n.Errorf(i18n.DevListenFail, addr, err)
+			}
+			defer ln.Close()
+			return http.Serve(ln, previewHandler(filepath.Join(root, layout.BuildDir)))
 		},
 	}
 	cmd.Flags().StringVar(&addr, "addr", ":8080", i18n.T(i18n.CliPreviewFlagAddr))

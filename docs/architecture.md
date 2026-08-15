@@ -24,9 +24,11 @@ CLI 只做参数解析与展示,业务逻辑全部在 Core,未来可复用给 GU
 cmd/plainship        客户端入口(构建 + 发布)
 cmd/plainship-server 服务端入口(serve + token + version)
 internal/
-├── clifx/       CLI 框架共享件:语言检测 / 错误渲染与建议 / 控制台编码 / 输出辅助
-├── cli/         客户端命令(cobra,双语输出;new/create/build/publish/connect/status/preview/dev/config/version)
-├── servercli/   服务端命令(cobra,双语输出;serve/token/version + 令牌文件管理)
+├── ui/          统一输出入口(UI 接口 + 事件流 + terminal/plain/json 渲染器 +
+│                进度条/Spinner + 交互 + slog 日志投影;全部命令与 core/builder 的唯一输出通道)
+├── clifx/       CLI 框架共享件:工具语言检测 / --lang 预扫描 / Windows 控制台编码
+├── cli/         客户端命令(cobra,双语输出;new/create/build/publish/connect/status/dev/preview/config/version)
+├── servercli/   服务端命令(cobra,双语输出;serve/token/version + 令牌文件管理 + 访问日志)
 ├── core/        核心编排(CreateSpace / Build / Publish / Status / Dev,按命令拆分)
 ├── revision/    版本语义:类别划分,内容指纹,机器提交协议,ps-N 编号
 ├── layout/      目录与文件名常量(docs / themes / build / .plainship)
@@ -37,13 +39,13 @@ internal/
 ├── git/         Git CLI 安全封装(通用命令)
 ├── parser/      Front Matter + Markdown 解析(goldmark)
 ├── router/      路由解析(文件名 / slug / URL 解耦)
-├── builder/     增量构建管线(语言感知渲染)
+├── builder/     增量构建管线(语言感知渲染,进度条反馈)
 ├── theme/       主题系统(layouts + assets,内嵌默认主题)
 ├── manifest/    构建清单
 ├── state/       Plainship 内部状态(.plainship)
 ├── protocol/    同步协议类型(Request/Response/FilePayload/ProtocolVersion,两端共享)
 ├── sync/        同步协议客户端(仅客户端二进制包含)
-├── server/      Plainship Server 逻辑(存储 + 同步 + 静态 HTTP,按 handler 拆分)
+├── server/      Plainship Server 逻辑(存储 + 同步 + 静态 HTTP + slog 运行日志)
 ├── dev/         开发模式:文件监听 watcher + SSE 热更新服务器
 ├── hash/        内容哈希与构建输入哈希
 └── fsutil/      安全文件系统工具
@@ -51,15 +53,21 @@ internal/
 
 ## 依赖方向
 
-`layout / model / hash`(最底层,无依赖)→ `i18n / fsutil / git / style / format / cliconfig` →
+`layout / model / hash`(最底层,无依赖)→ `i18n / fsutil / git / style / format / clifx` →
 `config / space / parser / router / theme / revision / protocol` →
-`builder / manifest / state / sync` → `server / dev / clifx` →
-`core`(编排)→ `cli`(客户端命令)/ `servercli`(服务端命令)→ `cmd/plainship` / `cmd/plainship-server`(最薄壳)
+`builder / manifest / state / sync` →
+`ui`(依赖 style/format/i18n,输出与日志的唯一出口)→ `server / dev` →
+`core`(编排,接收 `ui.UI` 作为输出入口)→ `cli`(客户端命令)/ `servercli`(服务端命令)→
+`cmd/plainship` / `cmd/plainship-server`(最薄壳)
 
 两端二进制只共享无业务含义的基础包与协议类型:
 
-- 服务端(`cmd/plainship-server`)= `servercli + server + protocol` + 基础包
-- 客户端(`cmd/plainship`)= `cli + core + builder + sync + dev` + 基础包
+- 服务端(`cmd/plainship-server`)= `servercli + server + protocol + ui` + 基础包
+- 客户端(`cmd/plainship`)= `cli + core + builder + sync + dev + ui` + 基础包
+
+> 输出统一走 `internal/ui`(见 [输出与体验架构](output-architecture.md)):
+> 命令层只表达意图(Info/Success/Warn/Detail/Progress...),颜色/对齐/进度/交互/日志
+> 全部由 ui 渲染器统一处理,非终端自动降级(无色/静默进度/交互放行),`--json` 输出机器可读事件流.
 
 未来模块落点:`rollback` 进 `core` + `revision`,搜索与 RSS 进 `builder`,
 插件系统作为 `builder` 的扩展点,多站点路由进 `server`.

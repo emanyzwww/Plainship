@@ -2,6 +2,8 @@
 
 > 本文介绍 `plainship build` 的完整机制:变更检测,分步提交,构建编号与历史回滚.
 > 快速上手见 [README](../README.md).
+> 与 [publishing.md](publishing.md) 的关系:本文是 `build` 命令的机制细节,
+> publishing.md 是构建 / 发布整体流程与设计原则;修改提交协议或回滚语义时两篇需同步更新.
 
 ## 构建流程
 

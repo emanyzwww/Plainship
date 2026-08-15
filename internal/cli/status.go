@@ -8,7 +8,7 @@ import (
 	"github.com/emanyzwww/plainship/internal/core"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/revision"
-	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/ui"
 	"github.com/emanyzwww/plainship/internal/version"
 )
 
@@ -20,8 +20,7 @@ func newStatusCmd() *cobra.Command {
 		Long:  i18n.T(i18n.CliStatusLong),
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
-			st := style.For(out)
+			u := newUI(cmd)
 			root := "."
 			if len(args) > 0 {
 				root = args[0]
@@ -30,59 +29,58 @@ func newStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printf(out, "%s\n\n", st.Bold(fmt.Sprintf("Plainship v%s", version.Version)))
-			println(out, st.Bold(i18n.T(i18n.CliStatusSpace)))
-			printf(out, "  %s\n\n", rep.SpaceRoot)
-			println(out, st.Bold(i18n.T(i18n.CliStatusGit)))
+			// 组件化输出, 样张 6.5: Section 标题 + Detail 两列对齐 + 状态色.
+			u.Info(ui.Bold(fmt.Sprintf("Plainship v%s", version.Version)))
+			u.Section(i18n.T(i18n.CliStatusSectionSpace))
+			u.Detail(i18n.T(i18n.CliStatusRootLabel), rep.SpaceRoot)
+			u.Section(i18n.T(i18n.CliStatusSectionGit))
 			if rep.GitAvailable && rep.HasRepo {
-				printf(out, "%s\n", i18n.T(i18n.CliStatusBranch, rep.GitBranch))
+				u.Detail(i18n.T(i18n.CliStatusBranchLabel), rep.GitBranch)
 				if rep.GitClean {
-					println(out, st.Green(i18n.T(i18n.CliStatusClean)))
+					u.Success(i18n.T(i18n.CliStatusClean))
 				} else {
-					println(out, st.Yellow(i18n.T(i18n.CliStatusDirty)))
+					u.Warn(i18n.T(i18n.CliStatusDirty))
 				}
 			} else if !rep.GitAvailable {
-				println(out, i18n.T(i18n.CliStatusGitUnavailable))
+				u.Info(i18n.T(i18n.CliStatusGitUnavailable))
 			} else {
-				println(out, i18n.T(i18n.CliStatusNoRepo))
+				u.Info(i18n.T(i18n.CliStatusNoRepo))
 			}
-			println(out, "")
-			println(out, st.Bold(i18n.T(i18n.CliStatusChanges)))
+			u.Section(i18n.T(i18n.CliStatusSectionChanges))
 			for _, cat := range revision.Categories {
 				c := rep.Changes[cat]
 				if c.HasChanges() {
-					printf(out, "%s\n", i18n.T(i18n.CliStatusChangeCount, cat, c.Added, c.Modified, c.Deleted))
+					u.Info(i18n.T(i18n.CliStatusChangeCount, cat, c.Added, c.Modified, c.Deleted))
 				} else {
-					printf(out, "%s\n", st.Green(fmt.Sprintf("  %s: clean", cat)))
+					u.Success(fmt.Sprintf("  %s: clean", cat))
 				}
 			}
-			println(out, "")
-			println(out, st.Bold(i18n.T(i18n.CliStatusBrand)))
+			u.Section(i18n.T(i18n.CliStatusSectionBuild))
 			if rep.BuildNumber == "" {
-				println(out, st.Yellow(i18n.T(i18n.CliStatusNotBuilt)))
+				u.Warn(i18n.T(i18n.CliStatusNotBuilt))
 			} else {
-				state := st.Green(i18n.T(i18n.CliStatusLatest))
+				state := ui.Green(i18n.T(i18n.CliStatusLatest))
 				if rep.BuildOutdated {
-					state = st.Yellow(i18n.T(i18n.CliStatusOutdated))
+					state = ui.Yellow(i18n.T(i18n.CliStatusOutdated))
 				}
-				printf(out, "%s\n", i18n.T(i18n.CliStatusBuild, state, st.Cyan(rep.BuildNumber)))
+				u.Info(i18n.T(i18n.CliStatusBuild, state, ui.Cyan(rep.BuildNumber)))
 				if rep.LastBuildTime != "" {
-					printf(out, "%s\n", i18n.T(i18n.CliStatusBuildTime, rep.LastBuildTime))
+					u.Info(i18n.T(i18n.CliStatusBuildTime, rep.LastBuildTime))
 				}
-				printf(out, "%s\n", i18n.T(i18n.CliStatusDocCount, rep.DocCount))
+				u.Info(i18n.T(i18n.CliStatusDocCount, rep.DocCount))
 			}
-			println(out, "")
-			println(out, st.Bold(i18n.T(i18n.CliStatusPublish)))
+			u.Section(i18n.T(i18n.CliStatusSectionPublish))
 			if rep.ServerURL == "" {
-				println(out, st.Yellow(i18n.T(i18n.CliStatusServerNone)))
+				u.Warn(i18n.T(i18n.CliStatusServerNone))
 			} else {
-				printf(out, "%s\n", i18n.T(i18n.CliStatusServer, st.Cyan(rep.ServerURL)))
+				u.Info(i18n.T(i18n.CliStatusServer, ui.Cyan(rep.ServerURL)))
 				if rep.PublishedBuild == "" {
-					println(out, st.Yellow(i18n.T(i18n.CliStatusPublishedNone)))
+					u.Warn(i18n.T(i18n.CliStatusPublishedNone))
 				} else {
-					printf(out, "%s\n", i18n.T(i18n.CliStatusPublished, st.Cyan(rep.PublishedBuild)))
+					u.Info(i18n.T(i18n.CliStatusPublished, ui.Cyan(rep.PublishedBuild)))
 				}
 			}
+			u.Flush()
 			return nil
 		},
 	}

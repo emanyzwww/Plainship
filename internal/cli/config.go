@@ -8,12 +8,12 @@ import (
 )
 
 // configKeys 是 config 命令支持的配置键白名单.
-// 键的校验与规范化由 config 包的 ConfigItem.Validate 负责 (见 config.Default).
+// 键的校验与规范化由 config 包的 ConfigItem.Validate 负责, 见 config.Default.
 var configKeys = map[string]bool{
 	"lang": true,
 }
 
-// newConfigCmd 实现 plainship config (get / set / unset, -g 全局).
+// newConfigCmd 实现 plainship config, get / set / unset, -g 全局.
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -61,7 +61,7 @@ func newConfigGetCmd() *cobra.Command {
 		Short: i18n.T(i18n.CliConfigGetShort),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
+			u := newUI(cmd)
 			key := args[0]
 			if !configKeys[key] {
 				return i18n.Errorf(i18n.CliConfigInvalidKey, key)
@@ -80,22 +80,21 @@ func newConfigGetCmd() *cobra.Command {
 				if !ok || v == "" {
 					return i18n.Errorf(i18n.CliConfigNotSet, key)
 				}
-				printf(out, "%s\n", v)
+				u.Info(v)
 				return nil
 			}
-			// 项目: 显示生效值 (空间 > 全局 > 默认).
+			// 项目: 显示生效值, 空间 > 全局 > 默认.
 			c, _, err := config.Load(root, nil)
 			if err != nil {
 				return err
 			}
-			printf(out, "%s\n", langOf(c, key))
+			u.Info(langOf(c, key))
 			return nil
 		},
 	}
 }
 
-// langOf 返回指定键的生效值.
-// 当前仅 lang 一个键; 后续新增键时扩展.
+// langOf 返回指定键的生效值, 当前仅支持 lang.
 func langOf(c *config.Config, key string) string {
 	switch key {
 	case "lang":
@@ -111,7 +110,7 @@ func newConfigSetCmd() *cobra.Command {
 		Short: i18n.T(i18n.CliConfigSetShort),
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
+			u := newUI(cmd)
 			key, value := args[0], args[1]
 			if !configKeys[key] {
 				return i18n.Errorf(i18n.CliConfigInvalidKey, key)
@@ -120,7 +119,7 @@ func newConfigSetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// 先加载当前配置再修改: 避免覆盖文件中已有的其他配置项 (如令牌).
+			// 先加载当前配置再修改, 保留文件中已有的其他配置项, 如令牌.
 			c, _, err := config.Load(root, nil)
 			if err != nil {
 				return err
@@ -137,7 +136,7 @@ func newConfigSetCmd() *cobra.Command {
 			if configGlobal {
 				scope = i18n.T(i18n.CliConfigScopeGlobal)
 			}
-			printf(out, "%s\n", i18n.T(i18n.CliConfigSetOk, key, langItem(c).Get(), scope))
+			u.Success(i18n.T(i18n.CliConfigSetOk, key, langItem(c).Get(), scope))
 			return nil
 		},
 	}
@@ -150,7 +149,7 @@ func newConfigUnsetCmd() *cobra.Command {
 		Short: i18n.T(i18n.CliConfigUnsetShort),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
+			u := newUI(cmd)
 			key := args[0]
 			if !configKeys[key] {
 				return i18n.Errorf(i18n.CliConfigInvalidKey, key)
@@ -159,7 +158,7 @@ func newConfigUnsetCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// 先加载当前配置: 清空目标项, 保留其他配置项 (如令牌).
+			// 先加载当前配置: 清空目标项, 保留其他配置项, 如令牌.
 			c, _, err := config.Load(root, nil)
 			if err != nil {
 				return err
@@ -175,7 +174,7 @@ func newConfigUnsetCmd() *cobra.Command {
 			if configGlobal {
 				scope = i18n.T(i18n.CliConfigScopeGlobal)
 			}
-			printf(out, "%s\n", i18n.T(i18n.CliConfigUnsetOk, key, scope))
+			u.Success(i18n.T(i18n.CliConfigUnsetOk, key, scope))
 			return nil
 		},
 	}

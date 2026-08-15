@@ -98,8 +98,10 @@ plainship dev
 
 - [使用指南](docs/usage.md) -- CLI 命令, 配置, Front matter, 目录结构, 多语言与回滚.
 - [构建与发布](docs/publishing.md) -- 构建, 提交与编号流程, Release 与设计原则.
+- [构建, 提交与编号](docs/build-and-revision.md) -- 构建机制, 机器提交协议与基础路径.
 - [服务器与同步协议](docs/server-and-sync.md) -- 服务器部署, 安装与同步 API.
 - [架构与开发](docs/architecture.md) -- 模块结构, 依赖方向与开发流程.
+- [输出与体验架构](docs/output-architecture.md) -- internal/ui 事件流设计 (已实施, v2).
 
 ## 开发
 

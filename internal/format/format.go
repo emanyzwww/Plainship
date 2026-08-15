@@ -7,7 +7,8 @@
 //		String()
 //
 // 列对齐按显示宽度计算 (CJK 等宽字符占 2 列), 中英混排不会错位.
-// 注: 标准库 text/tabwriter 按 rune 数计宽 (CJK 算 1 列), 因此这里自行实现对齐.
+//
+// 设计: 标准库 `text/tabwriter` 按 rune 数计宽, CJK 算 1 列, 因此自行实现对齐.
 package format
 
 import (
@@ -17,8 +18,8 @@ import (
 
 // Line 是文本排版构建器, 所有方法返回接收者以支持链式调用.
 type Line struct {
-	rows [][]string // 已完成的行 (每行是 cell 列表, Tab 分隔)
-	cur  []string   // 当前行
+	rows [][]string // rows 是已完成的行, 每行是 cell 列表, Tab 分隔.
+	cur  []string   // cur 是当前行.
 }
 
 // NewLine 创建一个空的排版构建器.
@@ -35,7 +36,7 @@ func (l *Line) Text(s string) *Line {
 	return l
 }
 
-// Textf 写入格式化文本 (fmt.Sprintf 后写入).
+// Textf 写入格式化文本, 经 fmt.Sprintf.
 func (l *Line) Textf(format string, args ...any) *Line {
 	return l.Text(fmt.Sprintf(format, args...))
 }
@@ -57,7 +58,7 @@ func (l *Line) Br() *Line {
 	return l
 }
 
-// Empty 写入一个空行 (等价于 Br).
+// Empty 写入一个空行, 等价于 Br.
 func (l *Line) Empty() *Line {
 	return l.Br()
 }
@@ -75,7 +76,7 @@ func (l *Line) String() string {
 		l.rows = append(l.rows, l.cur)
 		l.cur = nil
 	}
-	// 计算各列最大显示宽度 (仅统计多单元格行, 且最后一列不参与填充).
+	// 计算各列最大显示宽度, 仅统计多单元格行, 最后一列不参与填充.
 	var widths []int
 	for _, row := range l.rows {
 		if len(row) < 2 {
@@ -106,8 +107,9 @@ func (l *Line) String() string {
 	return b.String()
 }
 
-// displayWidth 估算字符串的显示宽度: ASCII 占 1 列, CJK 等宽字符占 2 列.
-func displayWidth(s string) int {
+// DisplayWidth 估算字符串的显示宽度: ASCII 占 1 列, CJK 等宽字符占 2 列.
+// 供排版与对齐场景复用, 如 `internal/ui` 的输出对齐.
+func DisplayWidth(s string) int {
 	w := 0
 	for _, r := range s {
 		if isWide(r) {
@@ -119,7 +121,10 @@ func displayWidth(s string) int {
 	return w
 }
 
-// isWide 判断字符是否为宽字符 (东亚全角/表意字符等).
+// displayWidth 是 DisplayWidth 的小写别名, 包内兼容.
+func displayWidth(s string) int { return DisplayWidth(s) }
+
+// isWide 判断字符是否为宽字符, 东亚全角/表意字符等.
 func isWide(r rune) bool {
 	return r >= 0x1100 && (r <= 0x115F || // Hangul Jamo
 		r == 0x2329 || r == 0x232A ||

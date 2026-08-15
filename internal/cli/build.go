@@ -20,7 +20,7 @@ func newBuildCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, err = core.Build(root, core.BuildOptions{Message: message}, cmd.OutOrStdout())
+			_, err = core.Build(root, core.BuildOptions{Message: message}, newUI(cmd))
 			return err
 		},
 	}

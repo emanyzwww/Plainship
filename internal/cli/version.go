@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/emanyzwww/plainship/internal/config"
@@ -15,7 +17,8 @@ func newVersionCmd() *cobra.Command {
 		Short: i18n.T(i18n.CliVersionShort),
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			printf(cmd.OutOrStdout(), "Plainship v%s\n", version.Version)
+			u := newUI(cmd)
+			u.Info(fmt.Sprintf("Plainship v%s", version.Version))
 		},
 	}
 }

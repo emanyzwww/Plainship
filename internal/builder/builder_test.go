@@ -13,7 +13,7 @@ import (
 func setupSpace(t *testing.T) *space.Space {
 	t.Helper()
 	root := t.TempDir()
-	s, err := space.Create(root)
+	s, err := space.Create(root, nil)
 	if err != nil {
 		t.Fatalf("创建 Space 失败: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestBuild_Basic(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "docs/测试文档.md", sampleDoc)
 
-	res, err := Build(s, os.Stdout)
+	res, err := Build(s, nil)
 	if err != nil {
 		t.Fatalf("构建失败: %v", err)
 	}
@@ -212,7 +212,7 @@ slug: quick-start
 	}
 }
 
-// TestBuild_RouteConflict 验证同 slug 的两篇文档导致构建失败 (不再静默覆盖).
+// TestBuild_RouteConflict 验证同 slug 的两篇文档导致构建失败, 不再静默覆盖.
 func TestBuild_RouteConflict(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "docs/a.md", "---\ntitle: A\nslug: same\n---\n内容")
@@ -227,7 +227,7 @@ func TestBuild_RouteConflict(t *testing.T) {
 	}
 }
 
-// TestBuild_InvalidSlugFails 验证非法 slug (路径穿越) 导致构建失败.
+// TestBuild_InvalidSlugFails 验证非法 slug 导致构建失败, 如路径穿越.
 func TestBuild_InvalidSlugFails(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "docs/a.md", "---\ntitle: A\nslug: ../evil\n---\n内容")
@@ -241,7 +241,7 @@ func TestBuild_InvalidSlugFails(t *testing.T) {
 	}
 }
 
-// TestBuild_IndexDocOwnsDir 验证 docs/<dir>/index.md 占据 <dir>/ 路由,
+// TestBuild_IndexDocOwnsDir 验证 `docs/<dir>/index.md` 占据 `<dir>/` 路由,
 // 且不再生成自动列表页覆盖它.
 func TestBuild_IndexDocOwnsDir(t *testing.T) {
 	s := setupSpace(t)
@@ -265,7 +265,7 @@ func TestBuild_IndexDocOwnsDir(t *testing.T) {
 	}
 }
 
-// TestBuild_HiddenDirSkipped 验证 docs 下隐藏目录 (如 .git) 不会作为资源发布.
+// TestBuild_HiddenDirSkipped 验证 docs 下隐藏目录, 如 .git, 不会作为资源发布.
 func TestBuild_HiddenDirSkipped(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "docs/测试文档.md", sampleDoc)
@@ -279,7 +279,7 @@ func TestBuild_HiddenDirSkipped(t *testing.T) {
 	}
 }
 
-// TestBuild_MarkdownUnsafeConfig 验证 markdown.unsafe 配置生效.
+// TestBuild_MarkdownUnsafeConfig 验证 `markdown.unsafe` 配置生效.
 func TestBuild_MarkdownUnsafeConfig(t *testing.T) {
 	s := setupSpace(t)
 	writeDoc(t, s, "docs/a.md", "---\ntitle: A\n---\n正文 <script>x</script>")
@@ -382,12 +382,12 @@ func TestBuild_PrevNextLinks(t *testing.T) {
 	if !strings.Contains(c, `href="/b/"`) {
 		t.Errorf("c 的上一篇链接错误: %s", c)
 	}
-	// b 同时有上/下一篇, 且指向正确路由 (带目录前缀).
+	// b 同时有上/下一篇, 且指向正确路由, 带目录前缀.
 	b := read("b/index.html")
 	if !strings.Contains(b, `href="/a/"`) || !strings.Contains(b, `href="/guide/c/"`) {
 		t.Errorf("b 的上/下一篇链接错误: %s", b)
 	}
-	// 不应残留裸相对链接 (如 href="b/), 否则从文章页跳转会 404.
+	// 不应残留裸相对链接, 否则从文章页跳转会 404.
 	for _, html := range []string{a, b, c} {
 		if strings.Contains(html, `href="guide/`) || strings.Contains(html, `href="a/`) || strings.Contains(html, `href="b/`) {
 			t.Errorf("存在裸相对链接: %s", html)
@@ -412,7 +412,7 @@ func TestBuild_PrevNextRefreshOnIncremental(t *testing.T) {
 		t.Fatalf("首次构建失败: %v", err)
 	}
 
-	// 新增 c: b 的下一篇从"无"变为 c, 即使 b 内容未变化也必须重新渲染.
+	// 新增 c: b 的下一篇从无变为 c, 即使 b 内容未变化也必须重新渲染.
 	writeDoc(t, s, "docs/c.md", "---\ntitle: C\ndate: 2026-01-03\n---\n内容")
 	res, err := Build(s, nil)
 	if err != nil {
@@ -431,7 +431,7 @@ func TestBuild_PrevNextRefreshOnIncremental(t *testing.T) {
 	if !strings.Contains(string(b), `href="/c/"`) {
 		t.Error("b 的下一篇链接未随新增文档刷新")
 	}
-	// 关联刷新走的是重新渲染: 正文必须完整保留 (状态缓存只有轻量信息).
+	// 关联刷新走的是重新渲染: 正文必须完整保留, 状态缓存只有轻量信息.
 	if !strings.Contains(string(b), "<p>内容</p>") {
 		t.Error("b 关联刷新后正文丢失")
 	}
@@ -448,7 +448,7 @@ func TestBuild_PrevNextRefreshOnIncremental(t *testing.T) {
 		t.Errorf("ChangedPages = %d, 期望 0", res2.ChangedPages)
 	}
 
-	// 删除 c: b 的下一篇应回到"无", b 需要重新渲染.
+	// 删除 c: b 的下一篇应回到无, b 需要重新渲染.
 	if err := os.Remove(filepath.Join(s.DocsDir(), "c.md")); err != nil {
 		t.Fatal(err)
 	}

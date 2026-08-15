@@ -31,8 +31,7 @@ func runCLI(t *testing.T, dir string, args ...string) (string, error) {
 	var buf bytes.Buffer
 	root.SetOut(&buf)
 	root.SetErr(&buf)
-	// stdin 注入非终端 reader: 交互式确认 (如 publish) 在测试中自动跳过,
-	// 避免依赖真实终端状态.
+	// stdin 注入非终端 reader: 交互式确认, 如 publish, 自动跳过, 不依赖真实终端状态.
 	root.SetIn(strings.NewReader(""))
 	root.SetArgs(args)
 	err = root.Execute()
@@ -141,7 +140,7 @@ func TestCLI_Build(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build 失败: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Number: ps-0001") {
+	if !strings.Contains(out, "✓ tag ps-0001") {
 		t.Errorf("build 输出缺少编号: %s", out)
 	}
 	if !fileExists(filepath.Join(dir, "build", "index.html")) {
@@ -205,14 +204,14 @@ func TestCLI_Status(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status 失败: %v", err)
 	}
-	for _, want := range []string{"Space:", "Git:", "Changes:", "config: clean", "theme: clean", "docs: clean", "number ps-0001", "Publish:"} {
+	for _, want := range []string{"Space", "Git", "Changes", "config: clean", "theme: clean", "docs: clean", "number ps-0001", "Publish"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("status 输出缺少 %q: %s", want, out)
 		}
 	}
 }
 
-// TestCLI_Status_NewSpace 无提交 (unborn HEAD) 的新仓库也应显示分支名.
+// TestCLI_Status_NewSpace 无提交的新仓库也应显示分支名, 即 unborn HEAD 状态.
 func TestCLI_Status_NewSpace(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := runCLI(t, dir, "new", dir); err != nil {
@@ -224,7 +223,7 @@ func TestCLI_Status_NewSpace(t *testing.T) {
 	}
 	branchOK := false
 	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "  Branch: ") {
+		if strings.HasPrefix(line, "Branch  ") {
 			branchOK = strings.TrimSpace(strings.TrimPrefix(line, "  Branch: ")) != ""
 		}
 	}
@@ -296,7 +295,7 @@ func TestCLI_Publish_RefusesNotBuilt(t *testing.T) {
 	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
-	// 手动提交源码 (模拟内容已提交但从未 build 的状态).
+	// 手动提交源码, 模拟内容已提交但从未 build 的状态.
 	if _, _, err := git.PassThrough(dir, "add", "-A"); err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +331,7 @@ func TestCLI_Publish_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("publish 失败: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "Published") {
+	if !strings.Contains(out, "Activated") {
 		t.Errorf("输出缺少发布成功: %s", out)
 	}
 	// 服务器应已提供首页.
@@ -403,8 +402,8 @@ func dirExists(p string) bool {
 }
 
 func TestCLI_Config_Project(t *testing.T) {
-	// 隔离真实全局配置: 项目层测试不应受机器上 ~/.plainship/config.yaml 残留影响.
-	// 同时重置包级 configGlobal (可能被其他测试的 -g 置位), 保证本测试自包含.
+	// 隔离真实全局配置: 项目层测试不应受机器上 `~/.plainship/config.yaml` 残留影响.
+	// 同时重置包级 configGlobal, 可能被其他测试的 `-g` 置位, 保证本测试自包含.
 	configGlobal = false
 	// 隔离用户主目录: Windows 用 USERPROFILE, Linux/macOS 用 HOME.
 	t.Setenv("HOME", t.TempDir())
@@ -421,7 +420,7 @@ func TestCLI_Config_Project(t *testing.T) {
 	if strings.TrimSpace(out) != "en" {
 		t.Errorf("默认 lang = %q, 期望 en", out)
 	}
-	// set lang zh (项目层).
+	// set lang zh, 项目层.
 	out, err = runCLI(t, dir, "config", "set", "lang", "zh")
 	if err != nil {
 		t.Fatalf("set lang 失败: %v", err)
@@ -442,7 +441,7 @@ func TestCLI_Config_Project(t *testing.T) {
 	if _, err := runCLI(t, dir, "config", "get", "nope"); err == nil {
 		t.Error("未知 key 应报错")
 	}
-	// 非法语言报错 (严格校验, 不接受 fr 回退 en).
+	// 非法语言报错, 严格校验, 不接受 fr 回退 en.
 	if _, err := runCLI(t, dir, "config", "set", "lang", "fr"); err == nil {
 		t.Error("非法语言应报错")
 	}

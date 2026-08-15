@@ -13,7 +13,7 @@ import (
 // setupSpace 创建临时 Space 并配置 Git 身份.
 func setupSpace(t *testing.T) *space.Space {
 	t.Helper()
-	s, err := space.Create(t.TempDir())
+	s, err := space.Create(t.TempDir(), nil)
 	if err != nil {
 		t.Fatalf("创建 Space 失败: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestGitStatus_ClassifiesCategories(t *testing.T) {
 func TestGitStatus_IgnoresBuildAndState(t *testing.T) {
 	s := setupSpace(t)
 	writeFile(t, filepath.Join(s.DocsDir(), "a.md"), "---\ntitle: A\n---\n内容")
-	// build/ 与 .plainship/ 不应计入任何类别.
+	// `build/` 与 `.plainship/` 不应计入任何类别.
 	writeFile(t, filepath.Join(s.BuildDir(), "index.html"), "<html></html>")
 	writeFile(t, filepath.Join(s.Root, ".plainship", "state", "build-state.json"), "{}")
 

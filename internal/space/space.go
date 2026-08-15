@@ -1,9 +1,9 @@
 // Package space 管理 Plainship 单个 Space 的创建与加载.
+//
 // Space 是 Plainship 的基本单位, 一个目录即一个 Space.
 package space
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,16 +14,15 @@ import (
 	"github.com/emanyzwww/plainship/internal/layout"
 	"github.com/emanyzwww/plainship/internal/state"
 	"github.com/emanyzwww/plainship/internal/theme"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
-// Space 表示一个 Plainship 的 Space
+// Space 表示一个 Plainship 的 Space.
 type Space struct {
-	Root    string
-	GitRoot string
-	// GitAvailable 表示 Git 是否可用
-	GitAvailable bool
-	// Config 是加载后的生效配置 (cfg 统一模型)
-	Config *config.Config
+	Root         string         // Root 是 Space 根目录.
+	GitRoot      string         // GitRoot 是 Git 仓库根目录, 可能位于 Root 的上级.
+	GitAvailable bool           // GitAvailable 表示 Git 是否可用.
+	Config       *config.Config // Config 是加载后的生效配置, cfg 统一模型.
 }
 
 // DocsDir 返回 docs 目录路径.
@@ -41,44 +40,49 @@ func (s *Space) BuildDir() string {
 	return filepath.Join(s.Root, layout.BuildDir)
 }
 
-// Create 在指定目录创建新的 Space
-func Create(root string) (*Space, error) {
-	// 拿到 space 的 root path
+// Create 在指定目录创建新的 Space.
+//
+// u 是输出入口, Git 缺失等警告经它输出到 stderr; nil 表示静默.
+func Create(root string, u ui.UI) (*Space, error) {
+	if u == nil {
+		u = ui.Discard
+	}
+
+	// 1. 解析 Space 根目录为绝对路径.
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
 
-	// 检查目录
+	// 2. 检查目录是否已是 Space.
 	if config.IsSpaceRoot(abs) {
 		return nil, i18n.Errorf(i18n.SpaceAlreadySpace, abs)
 	}
 
-	// 创建基础目录
-	// 配置直接写在根目录 plainship.yaml
+	// 3. 创建基础目录.
 	for _, d := range []string{layout.DocsDir, layout.ThemesDir} {
 		if err := os.MkdirAll(filepath.Join(abs, d), 0o755); err != nil {
 			return nil, i18n.Errorf(i18n.SpaceMkdirFail, err)
 		}
 	}
 
-	// 写入默认配置
+	// 4. 写入默认配置到根目录 plainship.yaml.
 	c := config.Default()
 	c.SetSpaceRoot(abs)
 	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		return nil, i18n.Errorf(i18n.SpaceSaveConfigFail, err)
 	}
-	// 4. 生成默认主题.
+	// 5. 生成默认主题.
 	if err := theme.CopyTo(filepath.Join(abs, layout.ThemesDir, "default")); err != nil {
 		return nil, i18n.Errorf(i18n.SpaceThemeFail, err)
 	}
-	// 5. 初始化 .plainship 状态目录.
+	// 6. 初始化 .plainship 状态目录.
 	if err := state.EnsureDirs(abs); err != nil {
 		return nil, i18n.Errorf(i18n.SpaceStateFail, err)
 	}
 	s := &Space{Root: abs, Config: c, GitAvailable: git.Available()}
 
-	// 6. Git 感知.
+	// 7. Git 感知.
 	if s.GitAvailable {
 		if git.IsRepo(abs) {
 			s.GitRoot, _ = git.Root(abs)
@@ -90,11 +94,11 @@ func Create(root string) (*Space, error) {
 			s.GitRoot = abs
 		}
 	} else {
-		fmt.Fprintln(os.Stderr, i18n.T(i18n.SpaceGitMissing1))
-		fmt.Fprintln(os.Stderr, i18n.T(i18n.SpaceGitMissing2))
-		fmt.Fprintln(os.Stderr, i18n.T(i18n.SpaceGitMissing3))
+		u.Warn(i18n.T(i18n.SpaceGitMissing1))
+		u.Warn(i18n.T(i18n.SpaceGitMissing2))
+		u.Warn(i18n.T(i18n.SpaceGitMissing3))
 	}
-	// 7. 生成 .gitignore.
+	// 8. 生成 .gitignore.
 	if err := writeGitignore(abs); err != nil {
 		return nil, err
 	}
@@ -132,8 +136,8 @@ func FindFrom(dir string) (*Space, error) {
 }
 
 // writeGitignore 生成或更新 .gitignore.
-// 规则:
-//   - 永远忽略 .plainship/ 内部状态与 build/ 构建产物 (均可由源码重建).
+//
+// 规则: 永远忽略 `.plainship/` 内部状态与 `build/` 构建产物, 均可由源码重建.
 func writeGitignore(root string) error {
 	path := filepath.Join(root, ".gitignore")
 	existing := ""

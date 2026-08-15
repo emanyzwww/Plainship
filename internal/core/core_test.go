@@ -17,7 +17,7 @@ import (
 func setupSpace(t *testing.T) *space.Space {
 	t.Helper()
 	root := t.TempDir()
-	s, err := space.Create(root)
+	s, err := space.Create(root, nil)
 	if err != nil {
 		t.Fatalf("创建 Space 失败: %v", err)
 	}
@@ -30,7 +30,7 @@ func setupSpace(t *testing.T) *space.Space {
 	return s
 }
 
-// writeDoc 写入 docs 下的文档 (带合法 Front Matter).
+// writeDoc 写入 docs 下的文档, 带合法 Front Matter.
 func writeDoc(t *testing.T, s *space.Space, rel, title string) {
 	t.Helper()
 	path := filepath.Join(s.DocsDir(), filepath.FromSlash(rel))
@@ -43,7 +43,7 @@ func writeDoc(t *testing.T, s *space.Space, rel, title string) {
 	}
 }
 
-// logSubjects 返回 git log 的主题列表 (新到旧).
+// logSubjects 返回 git log 的主题列表, 新到旧.
 func logSubjects(t *testing.T, dir string) []string {
 	t.Helper()
 	out, _, err := git.PassThrough(dir, "log", "--format=%s")
@@ -215,7 +215,7 @@ func TestPublish_RefusesNotBuilt(t *testing.T) {
 	if _, err := config.Save(c, config.SaveSpace); err != nil {
 		t.Fatal(err)
 	}
-	// 手动提交源码 (从未 build).
+	// 手动提交源码, 从未 build.
 	if _, _, err := git.PassThrough(s.Root, "add", "-A"); err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestPublish_RefusesRebuildNeeded(t *testing.T) {
 	if _, err := Build(s.Root, BuildOptions{}, nil); err != nil {
 		t.Fatalf("Build 失败: %v", err)
 	}
-	// 修改源码并手动提交 (clean), 但未重新 build.
+	// 修改源码并手动提交, 状态 clean, 但未重新 build.
 	writeDoc(t, s, "测试文档.md", "修改后的标题")
 	if _, _, err := git.PassThrough(s.Root, "add", "-A"); err != nil {
 		t.Fatal(err)

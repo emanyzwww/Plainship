@@ -35,6 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/emanyzwww/plainship/master/scripts/
 ```bash
 plainship-server serve --addr :9090 --data ./data
 # 不带 --token 时自动生成令牌并保存到 data/server.token(重启不变)
+# 运行日志:--log-level debug|info|warn|error(默认 info)/ --log-file <路径>(默认 stderr)/ --log-format text|json
 # 忘记令牌?运行:plainship-server token --data ./data
 ```
 
@@ -50,7 +51,7 @@ plainship connect http://<服务器地址>:9090
 plainship publish
 ```
 
-> 令牌写入 `.plainship/server.token`(0600,不进 Git),也可用环境变量 `PLAINSHIP_TOKEN` 提供.
+> 令牌写入 `.plainship/config.yaml`(0600,不进 Git),也可用环境变量 `PLAINSHIP_TOKEN` 提供.
 
 ## 设计约束
 
@@ -90,6 +91,9 @@ GET /api/v1/sites/:siteId/status
 
 # 同步接口
 POST /api/v1/sites/:siteId/sync
+
+# 构建元数据接口(需 Bearer Token,返回该 build 的 release.json)
+GET /api/v1/sites/:siteId/releases/:buildId
 ```
 
 ## 数据布局与原子发布
@@ -103,7 +107,7 @@ POST /api/v1/sites/:siteId/sync
 - Token 认证(Bearer),**认证永远开启**:服务器不存在"无认证"状态,客户端 `publish` 必须携带令牌
 - 令牌保存在 `<数据目录>/server.token`(0600),重启不变;忘记令牌可运行 `plainship-server token --data <目录>` 查看
 - 令牌不写入 `plainship.yaml`(避免随 config 类别提交进 Git 历史),
-  通过 `plainship connect` 写入 `.plainship/server.token`,或通过环境变量 `PLAINSHIP_TOKEN` 提供
+  通过 `plainship connect` 写入 `.plainship/config.yaml`,或通过环境变量 `PLAINSHIP_TOKEN` 提供
 - 路径遍历防护
 
 ## 站点服务

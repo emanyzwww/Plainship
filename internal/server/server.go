@@ -1,9 +1,12 @@
 // Package server 实现 Plainship Server.
-// 服务器只做三件事: 存储, 同步, 静态 HTTP. 不做任何 Markdown 编译.
+//
+// 服务器只做三件事: 存储, 同步, 静态 HTTP, 不做任何 Markdown 编译.
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,27 +23,40 @@ var (
 	buildIDPattern = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 )
 
-// MaxFileSize 是单个上传文件的字节上限 (64MB).
+// MaxFileSize 是单个上传文件的字节上限, 64MB.
 const MaxFileSize = 64 << 20
 
-// MaxBodySize 是同步请求体上限 (1GB).
+// MaxBodySize 是同步请求体上限, 1GB.
 const MaxBodySize = 1 << 30
 
-// MaxDecodedSize 是单次同步请求中所有文件解码后的总字节上限 (512MB).
+// MaxDecodedSize 是单次同步请求中所有文件解码后的总字节上限, 512MB.
 // 限制 base64 解码后的内存占用, 防止恶意请求拖垮服务器.
 const MaxDecodedSize = 512 << 20
 
 // Server 是 Plainship 服务器.
 type Server struct {
-	// DataDir 是数据目录, 例如 data/.
-	DataDir string
-	// Token 是同步接口的 Bearer Token, 为空表示不校验.
-	Token string
+	DataDir string       // DataDir 是数据目录, 例如 data/.
+	Token   string       // Token 是同步接口的 Bearer Token, 为空表示不校验.
+	Log     *slog.Logger // Log 是运行日志, 同步/激活/鉴权事件, nil 表示不记日志.
 }
 
 // New 创建服务器实例.
 func New(dataDir, token string) *Server {
 	return &Server{DataDir: dataDir, Token: token}
+}
+
+// WithLogger 绑定运行日志, 用于同步/激活/鉴权事件记录.
+func (s *Server) WithLogger(l *slog.Logger) *Server {
+	s.Log = l
+	return s
+}
+
+// log 记录一条服务器事件; 未绑定日志时静默.
+func (s *Server) log(level slog.Level, msg string, args ...any) {
+	if s.Log == nil {
+		return
+	}
+	s.Log.Log(context.Background(), level, msg, args...)
 }
 
 // Routes 返回 HTTP 路由.
@@ -54,18 +70,24 @@ func (s *Server) Routes() http.Handler {
 }
 
 // Serve 启动 HTTP 服务.
+//
 // 认证永远开启: 空令牌时拒绝启动, 防止服务器以无认证状态运行.
 func (s *Server) Serve(addr string) error {
+	return s.ServeHandler(addr, s.Routes())
+}
+
+// ServeHandler 与 Serve 相同, 但允许调用方包装路由处理器, 如访问日志中间件.
+func (s *Server) ServeHandler(addr string, h http.Handler) error {
 	if s.Token == "" {
 		return i18n.Errorf(i18n.ServerAuthNoToken)
 	}
-	return http.ListenAndServe(addr, s.Routes())
+	return http.ListenAndServe(addr, h)
 }
 
 // ---- 存储布局 ----
-// data/sites/<siteID>/releases/<buildID>/...  每次构建的完整产物
-// data/sites/<siteID>/current.json            当前激活的 buildID 指针
-// data/sites/<siteID>/releases/<buildID>/release.json  构建元数据
+// `data/sites/<siteID>/releases/<buildID>/...`  每次构建的完整产物.
+// `data/sites/<siteID>/current.json`            当前激活的 buildID 指针.
+// `data/sites/<siteID>/releases/<buildID>/release.json`  构建元数据.
 
 // siteDir 返回站点数据目录.
 func (s *Server) siteDir(siteID string) string {
@@ -124,8 +146,8 @@ func (s *Server) PublishedSites() []string {
 }
 
 // latestPublishedSite 返回最近一次激活的站点 ID.
-// 多站点场景下, 根路径 (无 ?site= 参数) 服务最近激活的站点,
-// 避免默认站点 my-docs 残留旧发布时根路径永远显示旧站点.
+//
+// 多站点场景下, 根路径, 无 `?site=` 参数, 服务最近激活的站点.
 func (s *Server) latestPublishedSite() string {
 	ids := s.PublishedSites()
 	if len(ids) == 0 {

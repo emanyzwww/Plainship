@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/emanyzwww/plainship/internal/clifx"
 	"github.com/emanyzwww/plainship/internal/i18n"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
-// TestPreviewHandler 服务 build 目录内容 (index.html 可访问).
+// TestPreviewHandler 服务 build 目录内容, index.html 可访问.
 func TestPreviewHandler(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<h1>hi</h1>"), 0o644); err != nil {
@@ -46,7 +46,7 @@ func TestPreviewPlan_NotBuilt(t *testing.T) {
 func TestPreviewPlan_Suggest(t *testing.T) {
 	dir := t.TempDir()
 	err := previewPlanError(t, dir)
-	if got := clifx.SuggestFor(err); got != i18n.SuggestBuildFirst {
+	if got := ui.SuggestFor(err); got != i18n.SuggestBuildFirst {
 		t.Errorf("建议 = %q, want %q", got, i18n.SuggestBuildFirst)
 	}
 }

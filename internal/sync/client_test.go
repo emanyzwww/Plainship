@@ -14,11 +14,11 @@ import (
 	"github.com/emanyzwww/plainship/internal/state"
 )
 
-// setupSyncedSpace 创建 Space 并执行一次构建, 然后记录一次"已同步"状态.
+// setupSyncedSpace 创建 Space 并执行一次构建, 然后记录一次已同步状态.
 func setupSyncedSpace(t *testing.T) (string, *manifest.Manifest) {
 	t.Helper()
 	root := t.TempDir()
-	s, err := space.Create(root)
+	s, err := space.Create(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func setupSyncedSpace(t *testing.T) (string, *manifest.Manifest) {
 	return root, m
 }
 
-// TestDiff_InitialUpload tests the first sync uploads everything.
+// TestDiff_InitialUpload 首次同步应上传全部文件.
 func TestDiff_InitialUpload(t *testing.T) {
 	root, m := setupSyncedSpace(t)
 	dist := filepath.Join(root, "build")
@@ -54,7 +54,7 @@ func TestDiff_InitialUpload(t *testing.T) {
 	}
 }
 
-// TestDiff_NoChangesAfterSync tests no uploads after sync state recorded.
+// TestDiff_NoChangesAfterSync 记录同步状态后不应再上传.
 func TestDiff_NoChangesAfterSync(t *testing.T) {
 	root, m := setupSyncedSpace(t)
 	dist := filepath.Join(root, "build")
@@ -79,7 +79,7 @@ func TestDiff_NoChangesAfterSync(t *testing.T) {
 func TestDiff_FullSync(t *testing.T) {
 	root, m := setupSyncedSpace(t)
 	dist := filepath.Join(root, "build")
-	// 先记录一次同步状态 (模拟服务器曾有历史版本).
+	// 先记录一次同步状态, 模拟服务器曾有历史版本.
 	if err := recordSyncState(t, root, dist, m.BuildID); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func hashBytes(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// TestDiff_DetectsDeletion tests deleted files are detected after removal.
+// TestDiff_DetectsDeletion 删除的文件应被检测到.
 func TestDiff_DetectsDeletion(t *testing.T) {
 	root, m := setupSyncedSpace(t)
 	dist := filepath.Join(root, "build")
@@ -186,7 +186,7 @@ func TestNormalizeServerURL(t *testing.T) {
 	}
 }
 
-// TestRequestMarshal checks the protocol request shape.
+// TestRequestMarshal 校验协议请求的结构.
 func TestRequestMarshal(t *testing.T) {
 	req := protocol.Request{
 		ProtocolVersion: protocol.ProtocolVersion,

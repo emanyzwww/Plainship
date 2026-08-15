@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -50,8 +51,8 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 写入 release 目录.
-	// 全量同步或新 buildID 时清空目录, 避免上次失败残留的文件污染本次发布.
-	// 同 buildID 重推 (客户端重试) 时不清空: 客户端只携带差异文件, 清空会导致缺失.
+	// 全量同步或新 buildID 时清空, 防止失败残留污染本次发布;
+	// 同 buildID 重推, 客户端重试, 不清空, 客户端只携带差异文件.
 	dir := s.releaseDir(siteID, req.BuildID)
 	active, activeErr := s.activeBuildID(siteID)
 	if req.FullSync || activeErr != nil || active != req.BuildID {
@@ -64,9 +65,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncMkdirFail)})
 		return
 	}
-	// 增量同步支持: 继承当前激活 release 的全部文件作为基底.
-	// 客户端只上传变化的文件, 新 release 必须基于上一版本补齐,
-	// 才能保证任何 release 都是完整快照 (激活时 index.html 必然存在).
+	// 增量同步: 继承当前激活 release 的全部文件作为基底, 保证任何 release 都是完整快照.
 	// 全量同步不继承: 服务器整体重建, 防止陈旧文件残留.
 	if !req.FullSync && activeErr == nil && active != req.BuildID {
 		prevDir := s.releaseDir(siteID, active)
@@ -106,8 +105,7 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 		}
 		stored++
 	}
-	// 应用删除: 校验路径后, 从 release 目录中实际移除文件.
-	// 先全部校验, 任一非法则整体拒绝, 避免部分应用.
+	// 应用删除: 先全部校验, 任一非法则整体拒绝, 再实际移除文件.
 	for _, d := range req.Deletes {
 		if _, err := fsutil.SafeRelPath(d); err != nil {
 			writeJSON(w, http.StatusBadRequest, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncBadDelete, d)})
@@ -135,9 +133,13 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request) {
 
 	// 原子激活: 先写临时文件再 rename.
 	if err := activateRelease(s, siteID, req.BuildID); err != nil {
+		s.log(slog.LevelError, "activate failed", "site", siteID, "build", req.BuildID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, protocol.Response{OK: false, Message: i18n.T(i18n.ServerSyncActivateFail, err.Error())})
 		return
 	}
+	s.log(slog.LevelInfo, "sync ok",
+		"site", siteID, "build", req.BuildID,
+		"files", stored, "deletes", len(req.Deletes), "full", req.FullSync)
 	writeJSON(w, http.StatusOK, protocol.Response{
 		OK: true, BuildID: req.BuildID, Active: true,
 		StoredFiles: stored, DeletedFiles: len(req.Deletes),

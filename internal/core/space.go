@@ -1,6 +1,3 @@
-// Package core 是 Plainship 的核心编排层.
-// 只负责流程编排 (CreateSpace / Build / Publish / Status / Dev),
-// Git 语义 (类别划分, 指纹, 提交协议, 编号) 由 internal/revision 提供.
 package core
 
 import (
@@ -11,11 +8,14 @@ import (
 	"github.com/emanyzwww/plainship/internal/fsutil"
 	"github.com/emanyzwww/plainship/internal/i18n"
 	"github.com/emanyzwww/plainship/internal/space"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
-// CreateSpace 在指定目录创建新的 Space (默认初始化 Git).
-func CreateSpace(root string) (*space.Space, error) {
-	return space.Create(root)
+// CreateSpace 在指定目录创建新的 Space, 默认初始化 Git.
+//
+// u 是输出入口, 接收 Git 缺失等警告; nil 表示静默.
+func CreateSpace(root string, u ui.UI) (*space.Space, error) {
+	return space.Create(root, u)
 }
 
 // CreateDocument 在 Space 中创建一篇 Markdown 文档.

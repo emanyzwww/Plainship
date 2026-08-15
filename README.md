@@ -98,8 +98,10 @@ plainship dev
 
 - [Usage guide](docs/usage.md) — CLI reference, configuration, front matter, directory layout, languages, and rollback.
 - [Build & publishing](docs/publishing.md) — build, commit, and numbering workflow, releases, and design principles.
+- [Build, commit & revision](docs/build-and-revision.md) — build mechanism, machine commit protocol, and base paths.
 - [Server & sync protocol](docs/server-and-sync.md) — server deployment, installation, and the sync API.
 - [Architecture & development](docs/architecture.md) — module structure, dependency direction, and development workflow.
+- [Output & UX architecture](docs/output-architecture.md) — the internal/ui event-stream design (implemented, v2).
 
 ## Development
 

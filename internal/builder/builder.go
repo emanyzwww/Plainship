@@ -1,11 +1,11 @@
 // Package builder 实现 Plainship 构建管线.
+//
 // 职责: 扫描, 变化检测, 解析, 渲染, 生成索引与 SEO, 原子发布, 生成清单.
 // 本包不直接调用 Git, 变化检测基于内容哈希与构建状态, Git 状态由上层展示.
 package builder
 
 import (
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,26 +24,29 @@ import (
 	"github.com/emanyzwww/plainship/internal/space"
 	"github.com/emanyzwww/plainship/internal/state"
 	"github.com/emanyzwww/plainship/internal/theme"
+	"github.com/emanyzwww/plainship/internal/ui"
 	"github.com/emanyzwww/plainship/internal/version"
 )
 
-// 渲染器版本统一由 internal/version 包提供 (跟随产品版本).
+// 渲染器版本统一由 `internal/version` 包提供, 跟随产品版本.
 
-// Build 执行生产构建: 站点内链接基于 site.url 的基础路径 (见 BasePath).
+// Build 执行生产构建, 站点内链接基于 site.url 的基础路径, 见 BasePath.
+//
 // 开发模式请使用 BuildDev.
-func Build(s *space.Space, out io.Writer) (*Result, error) {
+func Build(s *space.Space, out ui.UI) (*Result, error) {
 	return build(s, out, false)
 }
 
 // BuildDev 执行开发模式构建: 与 Build 相同, 但链接使用根路径,
-// 与 dev 服务器 (挂在根路径) 保持一致.
-func BuildDev(s *space.Space, out io.Writer) (*Result, error) {
+// 与挂在根路径的 dev 服务器保持一致.
+func BuildDev(s *space.Space, out ui.UI) (*Result, error) {
 	return build(s, out, true)
 }
 
 // BasePath 返回构建使用的链接基础路径.
-// dev 模式始终返回空字符串 (dev 服务器挂在根路径);
-// 生产模式返回 site.url 的路径部分, 例如 https://example.com/repo -> /repo;
+//
+// dev 模式始终返回空字符串, dev 服务器挂在根路径;
+// 生产模式返回 site.url 的路径部分, 例如 `https://example.com/repo` -> `/repo`;
 // 站点部署在域名根路径或未配置 url 时返回空字符串.
 func BasePath(s *space.Space, dev bool) string {
 	if dev {
@@ -58,24 +61,22 @@ func BasePath(s *space.Space, dev bool) string {
 
 // Result 是一次构建的结果.
 type Result struct {
-	BuildID      string
-	ChangedPages int
-	CopiedPages  int
-	DeletedPages int
-	AssetFiles   int
-	TotalFiles   int
-	BuildPath    string
-	Manifest     *manifest.Manifest
+	BuildID      string             // BuildID 是本次构建的标识.
+	ChangedPages int                // ChangedPages 是新增或重渲染的页面数.
+	CopiedPages  int                // CopiedPages 是从上一构建复制的页面数.
+	DeletedPages int                // DeletedPages 是删除的页面数.
+	AssetFiles   int                // AssetFiles 是资源文件数.
+	TotalFiles   int                // TotalFiles 是清单中的总文件数.
+	BuildPath    string             // BuildPath 是激活后的 build 目录.
+	Manifest     *manifest.Manifest // Manifest 是本次构建的清单.
 }
 
 // build 执行完整构建流程. dev 为 true 时链接使用根路径.
-func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
-	log := func(format string, args ...any) {
-		if out != nil {
-			fmt.Fprintf(out, format+"\n", args...)
-		}
+func build(s *space.Space, out ui.UI, dev bool) (*Result, error) {
+	if out == nil {
+		out = ui.Discard
 	}
-	log(i18n.T(i18n.BuilderScanning))
+	out.Info(i18n.T(i18n.BuilderScanning))
 
 	// 1. 准备状态与构建输入.
 	if err := state.EnsureDirs(s.Root); err != nil {
@@ -100,7 +101,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 		return nil, err
 	}
 	// 全局输入变化时, 所有页面都需要重新构建.
-	// 基础路径变化 (如 dev 构建后切回生产构建) 同样触发全量重建.
+	// 基础路径变化, 如 dev 构建后切回生产构建, 同样触发全量重建.
 	inputsChanged := prevState.ConfigHash != cfgHash ||
 		prevState.ThemeHash != themeHash ||
 		prevState.RendererVersion != version.RendererVersion() ||
@@ -133,11 +134,11 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 
 	// 4. 第一遍: 预解析路由, 供链接解析使用.
 	resolver := router.NewWithBase(base)
-	// 登记内容资源, 供 Markdown 非 md 链接 (图片等) 解析.
+	// 登记内容资源, 供 Markdown 非 md 链接解析, 如图片.
 	for _, assetRel := range assetFiles {
 		resolver.RegisterAsset(assetRel, assetRel)
 	}
-	// 路由冲突检测: 两篇文档生成同一路由时构建失败, 避免静默覆盖.
+	// 路由冲突检测: 两篇文档生成同一路由时构建失败.
 	routeOwners := map[string]string{}
 	for _, srcRel := range mdFiles {
 		kind := changes[srcRel]
@@ -165,7 +166,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 	}
 
 	// 5. 创建构建目录.
-	// buildID 使用纳秒时间戳, 保证同一秒内多次构建也互不冲突.
+	// buildID 使用纳秒时间戳, 同一秒内多次构建互不冲突.
 	buildID := "build-" + time.Now().Format("20060102-150405") + "-" + hash.BuildID(fmt.Sprintf("%d-%s", time.Now().UnixNano(), strings.Join(mdFiles, "|")))
 	buildDir := state.BuildDir(s.Root, buildID)
 	if err := os.RemoveAll(buildDir); err != nil {
@@ -190,8 +191,8 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 		Language:    s.Config.SpaceSite.SiteLanguage.Get(),
 		BaseURL:     base,
 	}
-	// 6. 解析文档 (仅完整解析发生变化的文档, 未变化的复用状态缓存).
-	log(i18n.T(i18n.BuilderBuilding))
+	// 6. 解析文档, 仅完整解析发生变化的文档, 未变化的复用状态缓存.
+	out.Info(i18n.T(i18n.BuilderBuilding))
 	sortedMd := append([]string(nil), mdFiles...)
 	sort.Strings(sortedMd)
 	parsed := map[string]*model.Document{}
@@ -248,7 +249,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 				res.DeletedPages++
 				prev := prevState.Files[srcRel]
 				manifestInstance.AddDeleted(manifest.FileEntry{Source: srcRel, Output: prev.Output, Type: manifest.TypePage})
-				log(i18n.T(i18n.BuilderDraft, srcRel))
+				out.Info(i18n.T(i18n.BuilderDraft, srcRel))
 			}
 			continue
 		}
@@ -268,7 +269,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 			if !containsKey(mdFiles, srcRel) {
 				res.DeletedPages++
 				manifestInstance.AddDeleted(manifest.FileEntry{Source: srcRel, Output: fs.Output, Hash: fs.Hash, Type: manifest.TypePage})
-				log(i18n.T(i18n.BuilderDeleted, srcRel))
+				out.Info(i18n.T(i18n.BuilderDeleted, srcRel))
 			}
 		case "asset":
 			if !containsKey(assetFiles, srcRel) {
@@ -293,12 +294,19 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 	}
 
 	// 9. 输出文档页面.
+	// 进度条: 终端显示 ▰▰▰▱▱ N/M 当前文档, 非终端/JSON 静默, 由构建摘要行兜底.
+	pg := (*ui.Progress)(nil)
+	total := len(parsed) + len(unchangedDocs)
+	if total > 0 {
+		pg = out.Progress(total)
+	}
+	n := 0
 	for _, srcRel := range sortedMd {
 		doc, ok := parsed[srcRel]
 		if !ok {
 			continue
 		}
-		// 增量: 内容未变化且全局输入(主题/配置/渲染器)未变时复用上一构建产物.
+		// 增量: 内容与全局输入, 主题/配置/渲染器, 均未变化时复用上一构建产物.
 		// 注意: 即使内容未变化, 上一篇/下一篇关联变化时也必须重新渲染.
 		prevFS, hadPrev := prevState.Files[srcRel]
 		pn := prevNext[doc.Route]
@@ -328,12 +336,17 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 			return nil, err
 		}
 		res.ChangedPages++
-		log("✓ %s", doc.Title)
+		n++
+		if pg != nil {
+			pg.Set(n, "")
+			pg.Set(n, doc.Title)
+		}
 	}
 
-	// 输出未变化文档 (从上一构建复制).
-	// 注意: 即使内容未变化, 上一篇/下一篇关联变化时 (新增/删除/改日期/改 slug)
-	// 也必须重新渲染, 否则文章间的导航地址是陈旧的.
+	// 输出未变化文档, 从上一构建复制.
+	//
+	// 注意: 即使内容未变化, 上一篇/下一篇关联变化, 如新增/删除/改日期/改 slug,
+	// 也必须重新渲染, 否则文章间的导航地址陈旧.
 	for _, doc := range unchangedDocs {
 		pn := prevNext[doc.Route]
 		prevFS := prevState.Files[doc.SourcePath]
@@ -346,11 +359,16 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 					return nil, err
 				}
 				res.CopiedPages++
+				n++
+				if pg != nil {
+					pg.Set(n, "")
+					pg.Set(n, doc.SourcePath)
+				}
 				continue
 			}
 		}
 		// 缓存不可用或关联已变化: 完整重新解析并渲染.
-		// 状态中的缓存只有轻量信息 (无正文), 不能直接用于渲染.
+		// 状态中的缓存只有轻量信息, 无正文, 不能直接用于渲染.
 		content, err := os.ReadFile(filepath.Join(s.DocsDir(), relToAbs(s.DocsDir(), doc.SourcePath)))
 		if err != nil {
 			return nil, err
@@ -374,6 +392,11 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 			return nil, err
 		}
 		res.ChangedPages++
+		n++
+		if pg != nil {
+			pg.Set(n, "")
+			pg.Set(n, doc.SourcePath)
+		}
 		// 关联已刷新, 同步更新状态.
 		if fs, ok := newStateFiles[doc.SourcePath]; ok {
 			fs.PrevRoute = pn.prevRoute()
@@ -381,8 +404,11 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 			newStateFiles[doc.SourcePath] = fs
 		}
 	}
+	if pg != nil {
+		pg.Done()
+	}
 
-	// 10. 复制内容资源 (图片等非 md 文件).
+	// 10. 复制内容资源, 图片等非 md 文件.
 	contentAssetCount := 0
 	for _, assetRel := range assetFiles {
 		abs := filepath.Join(s.DocsDir(), relToAbs(s.DocsDir(), assetRel))
@@ -437,8 +463,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 	res.TotalFiles++
 
 	// 目录列表页.
-	// 目录已有 index 文档 (docs/<dir>/index.md) 时, 该文档占据 <dir>/ 路由,
-	// 不再生成自动列表页, 避免覆盖.
+	// 目录已有 index 文档时, 该文档占据 <dir>/ 路由, 不再生成自动列表页.
 	dirs := groupByDir(allInfo)
 	for dir, docs := range dirs {
 		if dir == "" || hasDirIndex(allInfo, dir) {
@@ -470,15 +495,15 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 		return nil, i18n.Errorf(i18n.BuilderActivateFail, err)
 	}
 
-	// 14.1 生产构建压缩产物 (HTML/CSS/JS); dev 构建保持可读.
-	// 压缩在激活之后、清单写入之前, 并同步刷新清单哈希.
+	// 14.1 生产构建压缩产物, HTML/CSS/JS; dev 构建保持可读.
+	// 压缩在激活之后与清单写入之前, 并同步刷新清单哈希.
 	if !dev {
 		if err := minifyDir(s.BuildDir(), manifestInstance); err != nil {
 			return nil, err
 		}
 	}
 
-	// 13. 写入清单与状态.
+	// 15. 写入清单与状态.
 	res.Manifest = manifestInstance
 	if err := manifest.Write(s.Root, manifestInstance); err != nil {
 		return nil, err
@@ -500,7 +525,7 @@ func build(s *space.Space, out io.Writer, dev bool) (*Result, error) {
 }
 
 // scanContents 扫描 docs 目录.
-// 返回 Markdown 文件与资源文件列表(均为相对 Space 根的路径, 使用正斜杠).
+// 返回 Markdown 文件与资源文件列表, 均为相对 Space 根的路径, 使用正斜杠.
 func scanContents(docsDir string) (mdFiles, assetFiles []string, err error) {
 	if !fsutil.IsDir(docsDir) {
 		return nil, nil, i18n.Errorf(i18n.BuilderNoDocsDir, docsDir)
@@ -510,7 +535,7 @@ func scanContents(docsDir string) (mdFiles, assetFiles []string, err error) {
 			return err
 		}
 		if info.IsDir() {
-			// 跳过隐藏目录 (如 .git / .github), 防止内部文件被当资源发布.
+			// 跳过隐藏目录, 如 .git / .github, 防止内部文件被当资源发布.
 			if path != docsDir && strings.HasPrefix(info.Name(), ".") {
 				return filepath.SkipDir
 			}
@@ -605,7 +630,7 @@ func (p prevNextPair) nextRoute() string {
 	return ""
 }
 
-// computePrevNext 按日期升序排列文档, 计算每篇的上一篇(较早)与下一篇(较新).
+// computePrevNext 按日期升序排列文档, 计算每篇的上一篇与下一篇, 较早与较新.
 func computePrevNext(allInfo []model.DocInfo) map[string]prevNextPair {
 	sorted := append([]model.DocInfo(nil), allInfo...)
 	sortDocsByDateAsc(sorted)
@@ -679,7 +704,7 @@ func sortDocs(docs []model.DocInfo, mode string) {
 	})
 }
 
-// hasDirIndex 判断目录 dir 是否存在索引文档 (路由为 dir/).
+// hasDirIndex 判断目录 dir 是否存在索引文档, 路由为 dir/.
 func hasDirIndex(docs []model.DocInfo, dir string) bool {
 	indexRoute := dir + "/"
 	for _, d := range docs {
@@ -738,10 +763,9 @@ func writeSEO(buildDir string, site model.Site, docs []model.DocInfo) error {
 }
 
 // activate 原子发布 build 目录.
-// 先构建到 .plainship/builds, 验证通过后整体发布, 保证旧 build 在失败时保持可用.
-// 实现: 先把新内容完整复制到同级临时目录, 再通过两次 rename 交换,
-// 失败时旧 build/ 始终保持完整 (不会出现复制到一半的残缺状态).
-// 构建目录本身保留在 .plainship/builds, 供后续增量构建复用缓存.
+//
+// 先构建到 `.plainship/builds`, 验证通过后整体发布, 失败时旧 build 保持可用;
+// 构建目录本身保留在 `.plainship/builds`, 供后续增量构建复用缓存.
 func activate(buildDir, outputDir string) error {
 	if !fsutil.Exists(outputDir) {
 		return fsutil.CopyDir(buildDir, outputDir)
@@ -749,7 +773,7 @@ func activate(buildDir, outputDir string) error {
 	ts := time.Now().Format("20060102-150405.000000000")
 	tmp := outputDir + ".new-" + ts
 	old := outputDir + ".old-" + ts
-	// 1. 复制新内容到临时目录 (失败时旧 build 不受影响).
+	// 1. 复制新内容到临时目录, 失败时旧 build 不受影响.
 	if err := os.RemoveAll(tmp); err != nil {
 		return err
 	}
@@ -772,7 +796,6 @@ func activate(buildDir, outputDir string) error {
 }
 
 // pruneOldBuilds 清理旧的构建目录, 只保留最近 keep 个.
-// 用于防止 .plainship/builds 无限膨胀.
 func pruneOldBuilds(spaceRoot string, keep int, currentBuildID string) {
 	buildsDir := state.BuildsDir(spaceRoot)
 	entries, err := os.ReadDir(buildsDir)

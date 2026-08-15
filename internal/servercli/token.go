@@ -7,9 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/emanyzwww/plainship/internal/clifx"
 	"github.com/emanyzwww/plainship/internal/i18n"
-	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
 // newTokenCmd 实现 plainship-server token [--data <目录>].
@@ -20,7 +19,7 @@ func newTokenCmd() *cobra.Command {
 		Short: i18n.T(i18n.CliTokenShort),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
+			u := newUI(cmd)
 			absData, err := filepath.Abs(dataDir)
 			if err != nil {
 				absData = dataDir
@@ -32,9 +31,8 @@ func newTokenCmd() *cobra.Command {
 				}
 				return err
 			}
-			st := style.For(out)
-			clifx.Printf(out, "%s\n", st.Cyan(i18n.T(i18n.CliTokenValue, tok)))
-			clifx.Printf(out, "%s\n", i18n.T(i18n.CliTokenSavedAt, tokenFilePath(absData)))
+			u.Info(ui.Cyan(i18n.T(i18n.CliTokenValue, tok)))
+			u.Info(i18n.T(i18n.CliTokenSavedAt, tokenFilePath(absData)))
 			return nil
 		},
 	}

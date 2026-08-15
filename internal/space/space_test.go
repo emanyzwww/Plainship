@@ -11,7 +11,7 @@ import (
 
 func TestCreate_BasicStructure(t *testing.T) {
 	root := t.TempDir()
-	s, err := Create(root)
+	s, err := Create(root, nil)
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -57,17 +57,17 @@ func TestCreate_BasicStructure(t *testing.T) {
 
 func TestCreate_RejectsExistingSpace(t *testing.T) {
 	root := t.TempDir()
-	if _, err := Create(root); err != nil {
+	if _, err := Create(root, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Create(root); err == nil {
+	if _, err := Create(root, nil); err == nil {
 		t.Error("重复创建应报错")
 	}
 }
 
 func TestCreate_GitignoreContent(t *testing.T) {
 	root := t.TempDir()
-	if _, err := Create(root); err != nil {
+	if _, err := Create(root, nil); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, ".gitignore"))
@@ -87,7 +87,7 @@ func TestCreate_GitignoreContent(t *testing.T) {
 
 func TestLoad_AndLoadDocs(t *testing.T) {
 	root := t.TempDir()
-	if _, err := Create(root); err != nil {
+	if _, err := Create(root, nil); err != nil {
 		t.Fatal(err)
 	}
 	s, err := Load(root)

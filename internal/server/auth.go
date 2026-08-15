@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,7 @@ func (s *Server) checkAuth(w http.ResponseWriter, r *http.Request) bool {
 	auth := r.Header.Get("Authorization")
 	token := strings.TrimPrefix(auth, "Bearer ")
 	if subtle.ConstantTimeCompare([]byte(token), []byte(s.Token)) != 1 {
+		s.log(slog.LevelWarn, "auth failed", "path", r.URL.Path)
 		http.Error(w, i18n.T(i18n.ServerAuthUnauthorized), http.StatusUnauthorized)
 		return false
 	}

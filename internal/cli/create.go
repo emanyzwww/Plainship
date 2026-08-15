@@ -5,7 +5,7 @@ import (
 
 	"github.com/emanyzwww/plainship/internal/core"
 	"github.com/emanyzwww/plainship/internal/i18n"
-	"github.com/emanyzwww/plainship/internal/style"
+	"github.com/emanyzwww/plainship/internal/ui"
 )
 
 // newCreateCmd 实现 plainship create <名称>.
@@ -16,8 +16,7 @@ func newCreateCmd() *cobra.Command {
 		Long:  i18n.T(i18n.CliCreateLong),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out := cmd.OutOrStdout()
-			st := style.For(out)
+			u := newUI(cmd)
 			root, err := findSpaceRoot(cmd)
 			if err != nil {
 				return err
@@ -26,9 +25,9 @@ func newCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			println(out, st.Green(i18n.T(i18n.CliCreateOk, rel)))
-			println(out, "")
-			println(out, i18n.T(i18n.CliCreateEdit, rel))
+			u.Info(ui.Green(i18n.T(i18n.CliCreateOk, rel)))
+			u.Info("")
+			u.Info(i18n.T(i18n.CliCreateEdit, rel))
 			return nil
 		},
 	}
