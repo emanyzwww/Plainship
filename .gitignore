@@ -2,3 +2,7 @@
 
 .idea/
 .vscode/
+
+.gocache/
+.gotmp/
+
