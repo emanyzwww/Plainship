@@ -3,7 +3,7 @@ package space
 // Config 是站点级配置, 存储在根目录 papership.yaml.
 type Config struct {
 	// ==============================
-	// Site Config.
+	// 站点配置.
 	// ==============================
 
 	SiteID          string // SiteID 站点唯一标识.
@@ -13,14 +13,14 @@ type Config struct {
 	SiteDescription string // SiteDescription 站点描述.
 
 	// ==============================
-	// Server Config.
+	// 服务点配置.
 	// ==============================
 
 	ServerURL  string // ServerURL 目标服务端地址.
 	ServerSite string // ServerSite 服务端上的站点名, 默认使用 SiteID.
 
 	// ==============================
-	// Theme Config.
+	// 主题配置.
 	// ==============================
 
 	ThemeName string // ThemeName 使用的主题名, 默认 "default".
