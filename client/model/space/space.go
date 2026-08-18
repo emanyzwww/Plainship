@@ -13,8 +13,8 @@ type Space struct {
 	Root         string      // Root 是 Space 根目录.
 	Layout       Layout      // Layout 是当前生效的目录布局.
 	Config       Config      // Config 是站点级配置.
-	GitRoot      string      // GitRoot 是 Git 仓库根目录; 可能与 Root 相同, 也可能位于 Root 上级; 空表示尚未检测.
 	LocalConfig  LocalConfig // LocalConfig 是本地私有配置.
+	GitRoot      string      // GitRoot 是 Git 仓库根目录; 可能与 Root 相同, 也可能位于 Root 上级; 空表示尚未检测.
 	GitAvailable bool        // GitAvailable 表示本机 Git 是否可用.
 }
 
