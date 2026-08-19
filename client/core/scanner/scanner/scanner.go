@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emanyzwww/papership-client/core/pipeline"
 	"github.com/emanyzwww/papership-client/model/space"
 )
 
@@ -20,6 +21,11 @@ var (
 	osStat  = os.Stat
 	walkDir = filepath.WalkDir
 )
+
+// problem 构造带扫描层标记的共享问题.
+func problem(sev Severity, path, msg string) Problem {
+	return Problem{Severity: sev, Stage: "scanner", Path: path, Message: msg}
+}
 
 // ScanOptions 控制扫描行为; 零值即默认行为.
 type ScanOptions struct {
@@ -73,8 +79,8 @@ func ScanWithOptions(s *space.Space, opts ScanOptions) (*Result, error) {
 	scanThemes(res, opts)
 	scanRootAssets(res, opts)
 
-	sortDocs(res.Docs)
-	sortAssets(res.Assets)
+	pipeline.SortByKey(res.Docs)
+	pipeline.SortByKey(res.Assets)
 	sortThemes(res.Themes)
 
 	return res, nil
@@ -143,17 +149,9 @@ func detectConfigFiles(res *Result) {
 	if info, err := osStat(s.ConfigPath()); err == nil && !info.IsDir() {
 		res.ConfigPresent = true
 	} else if info != nil && info.IsDir() {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityError,
-			Path:     s.ConfigPath(),
-			Message:  "Space 配置文件路径是一个目录而非文件, 将以默认配置继续; 若要发布站点请先创建 papership.yaml",
-		})
+		res.Problems = append(res.Problems, problem(SeverityError, s.ConfigPath(), "Space 配置文件路径是一个目录而非文件, 将以默认配置继续; 若要发布站点请先创建 papership.yaml"))
 	} else {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityError,
-			Path:     s.ConfigPath(),
-			Message:  "Space 配置文件不存在, 将以默认配置继续; 若要发布站点请先补全 papership.yaml",
-		})
+		res.Problems = append(res.Problems, problem(SeverityError, s.ConfigPath(), "Space 配置文件不存在, 将以默认配置继续; 若要发布站点请先补全 papership.yaml"))
 	}
 
 	localPath := filepath.Join(s.StateDir(), "config.yaml")
@@ -173,21 +171,13 @@ func scanDocs(res *Result, opts ScanOptions) {
 
 	// 处理 docs 不存在
 	if info, err := osStat(docsDir); err != nil || !info.IsDir() {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityError,
-			Path:     docsDir,
-			Message:  "docs 目录不存在或不可读, 站点将无任何文档",
-		})
+		res.Problems = append(res.Problems, problem(SeverityError, docsDir, "docs 目录不存在或不可读, 站点将无任何文档"))
 		return
 	}
 
 	err := walkDir(docsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			res.Problems = append(res.Problems, Problem{
-				Severity: SeverityWarning,
-				Path:     path,
-				Message:  "遍历失败: " + err.Error(),
-			})
+			res.Problems = append(res.Problems, problem(SeverityWarning, path, "遍历失败: "+err.Error()))
 			return nil // 继续遍历兄弟节点.
 		}
 		if d.IsDir() {
@@ -216,11 +206,7 @@ func scanDocs(res *Result, opts ScanOptions) {
 		return nil
 	})
 	if err != nil {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityError,
-			Path:     docsDir,
-			Message:  "扫描 docs 失败: " + err.Error(),
-		})
+		res.Problems = append(res.Problems, problem(SeverityError, docsDir, "扫描 docs 失败: "+err.Error()))
 	}
 }
 
@@ -314,21 +300,13 @@ func scanThemes(res *Result, opts ScanOptions) {
 	themesDir := s.ThemesDir()
 
 	if info, err := osStat(themesDir); err != nil || !info.IsDir() {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityWarning,
-			Path:     themesDir,
-			Message:  "themes 目录不存在, 将使用默认主题",
-		})
+		res.Problems = append(res.Problems, problem(SeverityWarning, themesDir, "themes 目录不存在, 将使用默认主题"))
 		return
 	}
 
 	entries, err := os.ReadDir(themesDir)
 	if err != nil {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityWarning,
-			Path:     themesDir,
-			Message:  "读取 themes 失败: " + err.Error(),
-		})
+		res.Problems = append(res.Problems, problem(SeverityWarning, themesDir, "读取 themes 失败: "+err.Error()))
 		return
 	}
 
@@ -379,11 +357,7 @@ func scanRootAssets(res *Result, opts ScanOptions) {
 
 	err = walkDir(s.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			res.Problems = append(res.Problems, Problem{
-				Severity: SeverityWarning,
-				Path:     path,
-				Message:  "遍历失败: " + err.Error(),
-			})
+			res.Problems = append(res.Problems, problem(SeverityWarning, path, "遍历失败: "+err.Error()))
 			return nil
 		}
 		if underPath(path, skipRoots...) {
@@ -407,11 +381,7 @@ func scanRootAssets(res *Result, opts ScanOptions) {
 		return nil
 	})
 	if err != nil {
-		res.Problems = append(res.Problems, Problem{
-			Severity: SeverityWarning,
-			Path:     s.Root,
-			Message:  "扫描根目录失败: " + err.Error(),
-		})
+		res.Problems = append(res.Problems, problem(SeverityWarning, s.Root, "扫描根目录失败: "+err.Error()))
 	}
 }
 
@@ -432,14 +402,7 @@ func underPath(path string, bases ...string) bool {
 // 排序.
 // ==============================
 
-func sortDocs(docs []DocEntry) {
-	sort.Slice(docs, func(i, j int) bool { return docs[i].RelPath < docs[j].RelPath })
-}
-
-func sortAssets(assets []AssetEntry) {
-	sort.Slice(assets, func(i, j int) bool { return assets[i].RelPath < assets[j].RelPath })
-}
-
+// sortThemes 按主题名排序; 主题无 RelPath 键, 故保留本地实现.
 func sortThemes(themes []ThemeEntry) {
 	sort.Slice(themes, func(i, j int) bool { return themes[i].Name < themes[j].Name })
 }

@@ -40,7 +40,7 @@ func hasProblem(res *Result, path string) bool {
 }
 
 // findProblem 查找指定路径且严重级别匹配的问题; 严重级别用于锁定分级设计.
-func findProblem(res *Result, path, severity string) (Problem, bool) {
+func findProblem(res *Result, path string, severity Severity) (Problem, bool) {
 	for _, p := range res.Problems {
 		if p.Path == path && p.Severity == severity {
 			return p, true

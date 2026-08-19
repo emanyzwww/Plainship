@@ -1,67 +1,51 @@
 // Package normalizer 负责把由 parser 解析成的元数据标准化.
+//
+// 文档类型直接复用 parser.Document: 共享脊柱 (pipeline.Doc) 里已有的
+// 物理/内容事实不变, 本层只推导并写入语义字段 (Base/Lang/IsIndex/Title/Slug).
+// 这样下游 assembly/derive/render 拿到的是同一个文档类型, 不再为每一层复制一份
+// 结构定义.
 package normalizer
 
 import (
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/emanyzwww/papership-client/core/parser/parser"
-	"github.com/emanyzwww/papership-client/model/space"
+	"github.com/emanyzwww/papership-client/core/pipeline"
 	"github.com/yuin/goldmark/ast"
 )
 
-// Document 是一篇标准化后的文档: 解析结果 + 推导出的标准字段.
-//
-// 与 parser.Document 分离而不是复用, 是为了保持每层契约独立:
-// 未来 normalizer 扩展字段 (如摘要、关键词) 只在这里加, 不影响 parser.
-type Document struct {
-	Parsed  parser.Document // Parsed 解析层完整结果 (Entry/Meta/AST/Body/Hash).
-	RelPath string          // RelPath 相对 Space 根目录的路径.
-	Dir     string          // Dir 相对 docs 根目录的目录部分; 顶层文档为空.
-	Base    string          // Base 剥离语言后缀后的文档基名.
-	Lang    string          // Lang 从文件名语言后缀推导的语言码, 如 "zh"; 无后缀为空.
-	IsIndex bool            // IsIndex 是否为入口文档 (index / _index / README).
-	Title   string          // Title 标题: Front Matter title 优先, 否则取第一个 H1.
-	Slug    string          // Slug 用于 URL 的稳定标识, 基于 Base 生成.
-}
+// Document 与 parser.Document 是同一个类型 (别名):
+// 标准化不引入新结构, 只填充脊柱语义字段.
+type Document = parser.Document
 
-// Result 是一次 Normalize 的完整产物.
-type Result struct {
-	Space *space.Space // Space 本次标准化的 Space, 透传.
-	Docs  []Document   // Docs 标准化后的文档, 按 RelPath 排序.
-}
+// Result 是一次 Normalize 的完整产物; 信封复用 pipeline.
+type Result = pipeline.Result[Document]
 
-// DocCount 返回文档数量.
-func (r *Result) DocCount() int { return len(r.Docs) }
-
-// Normalize 对一次解析结果执行标准化.
+// Normalize 对一次解析结果执行标准化: 推导语言/入口/标题/slug 并写入脊柱.
 func Normalize(parsed *parser.Result) (*Result, error) {
 	if parsed == nil {
 		return nil, fmt.Errorf("normalizer: nil parse result")
 	}
 
-	res := &Result{Space: parsed.Space}
+	res := pipeline.NewResult[Document](parsed.Space)
 	for _, d := range parsed.Docs {
-		base, lang := splitLang(d.Entry.Stem)
-		title := d.Title()
+		base, lang := splitLang(d.Stem)
+		title := d.MetaTitle() // 方法: 仅查 Front Matter.
 		if title == "" {
 			title = firstHeadingTitle(d.AST, d.Body)
 		}
-		res.Docs = append(res.Docs, Document{
-			Parsed:  d,
-			RelPath: d.Entry.RelPath,
-			Dir:     d.Entry.Dir,
-			Base:    base,
-			Lang:    lang,
-			IsIndex: isIndexName(base),
-			Title:   title,
-			Slug:    slugify(base),
-		})
+		doc := d // 拷贝, 在副本上填充语义字段.
+		doc.Base = base
+		doc.Lang = lang
+		doc.IsIndex = isIndexName(base)
+		doc.Title = title
+		doc.Slug = slugify(base)
+		res.Docs = append(res.Docs, doc)
 	}
 
-	sortDocs(res.Docs)
+	pipeline.SortByKey(res.Docs)
 	return res, nil
 }
 
@@ -129,9 +113,4 @@ func slugify(s string) string {
 		}
 	}
 	return strings.Trim(b.String(), "-")
-}
-
-// sortDocs 按 RelPath 排序, 与 scanner/parser 的约定一致.
-func sortDocs(docs []Document) {
-	sort.Slice(docs, func(i, j int) bool { return docs[i].RelPath < docs[j].RelPath })
 }

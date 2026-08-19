@@ -1,6 +1,21 @@
 package scanner
 
-import "github.com/emanyzwww/papership-client/model/space"
+import (
+	"github.com/emanyzwww/papership-client/core/pipeline"
+	"github.com/emanyzwww/papership-client/model/space"
+)
+
+// Problem / Severity 是全管线共享的问题形态, 由 pipeline 定义.
+// scanner 通过别名复用, 保证从扫描到渲染各层 Problem 是同一个类型,
+// 便于逐层汇总与展示.
+type Problem = pipeline.Problem
+type Severity = pipeline.Severity
+
+// 常用严重级别 (等价于 pipeline.SeverityWarning / SeverityError).
+const (
+	SeverityWarning = pipeline.SeverityWarning
+	SeverityError   = pipeline.SeverityError
+)
 
 // Kind 表示扫描识别出的文件类型分类.
 type Kind int
@@ -26,6 +41,9 @@ func (k Kind) String() string {
 }
 
 // DocEntry 是 docs 目录下的一篇文档在扫描索引中的记录.
+//
+// 它是文件系统层的视图 (含 AbsPath), 与 pipeline.Doc 的语义视图不同;
+// parser 会把本条目映射为 pipeline.Doc 脊柱并继续向下传递.
 type DocEntry struct {
 	AbsPath string // AbsPath 文件绝对路径.
 	RelPath string // RelPath 相对 Space 根目录的路径.
@@ -36,6 +54,9 @@ type DocEntry struct {
 	Size    int64  // Size 文件字节数.
 	ModTime int64  // ModTime 修改时间, 供增量扫描比对.
 }
+
+// Key 返回排序键: 相对 Space 根目录的路径.
+func (e DocEntry) Key() string { return e.RelPath }
 
 // ThemeEntry 是 themes 目录下的一个主题条目.
 type ThemeEntry struct {
@@ -52,23 +73,15 @@ type AssetEntry struct {
 	ModTime int64  // ModTime 修改时间.
 }
 
-// Problem 记录扫描过程中的非致命问题.
-type Problem struct {
-	Severity string // Severity: "warning" 或 "error".
-	Path     string // Path 关联的路径.
-	Message  string // Message 人类可读的描述.
-}
-
-// 常用严重级别.
-const (
-	SeverityWarning = "warning"
-	SeverityError   = "error"
-)
+// Key 返回排序键: 相对 Space 根目录的路径.
+func (a AssetEntry) Key() string { return a.RelPath }
 
 // Result 是一次 Scan 的完整产物: 它既是文件索引, 也是下游的输入.
 //
 // Space 字段回填了扫描过程中探测到的 GitRoot/GitAvailable,
 // 调用方可直接使用扩展后的 Space.
+//
+// Problems 复用 pipeline.Problem 类型: 从扫描到渲染全管线共享同一种问题形态.
 type Result struct {
 	Space              *space.Space // Space 本次扫描的 Space.
 	Docs               []DocEntry   // Docs 文档索引, 按 RelPath 排序.

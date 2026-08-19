@@ -34,7 +34,7 @@ func mkScan(t *testing.T, files map[string]string) *scanner.Result {
 func findDoc(t *testing.T, res *Result, rel string) (Document, bool) {
 	t.Helper()
 	for _, d := range res.Docs {
-		if d.Entry.RelPath == rel {
+		if d.RelPath == rel {
 			return d, true
 		}
 	}
@@ -42,7 +42,7 @@ func findDoc(t *testing.T, res *Result, rel string) (Document, bool) {
 }
 
 // firstProblemAt 查找 Path 与 Severity 匹配的第一个 Problem; 未找到返回 error.
-func firstProblemAt(res *Result, path, severity string) (scanner.Problem, error) {
+func firstProblemAt(res *Result, path string, severity scanner.Severity) (scanner.Problem, error) {
 	for _, p := range res.Problems {
 		if p.Path == path && p.Severity == severity {
 			return p, nil
@@ -74,7 +74,7 @@ func TestParseBasic(t *testing.T) {
 	if !ok {
 		t.Fatal("docs/index.md 缺失")
 	}
-	if got := idx.Title(); got != "首页" {
+	if got := idx.MetaTitle(); got != "首页" {
 		t.Errorf("index title = %q, want 首页", got)
 	}
 	if idx.AST == nil {
@@ -97,8 +97,8 @@ func TestParseBasic(t *testing.T) {
 
 	// 排序与 scanner 一致.
 	for i := 1; i < len(res.Docs); i++ {
-		if res.Docs[i-1].Entry.RelPath > res.Docs[i].Entry.RelPath {
-			t.Errorf("docs not sorted: %s > %s", res.Docs[i-1].Entry.RelPath, res.Docs[i].Entry.RelPath)
+		if res.Docs[i-1].RelPath > res.Docs[i].RelPath {
+			t.Errorf("docs not sorted: %s > %s", res.Docs[i-1].RelPath, res.Docs[i].RelPath)
 		}
 	}
 }
@@ -164,7 +164,7 @@ func TestParseBOM(t *testing.T) {
 	if !ok {
 		t.Fatal("docs/index.md 缺失")
 	}
-	if got := idx.Title(); got != "bom" {
+	if got := idx.MetaTitle(); got != "bom" {
 		t.Errorf("title = %q, want bom (BOM 已剥离)", got)
 	}
 	if string(idx.Body) != "# Hi\n" {
@@ -200,9 +200,9 @@ func TestParseIdempotent(t *testing.T) {
 		t.Errorf("DocCount mismatch: %d vs %d", r1.DocCount(), r2.DocCount())
 	}
 	for i := range r1.Docs {
-		if r1.Docs[i].Entry.RelPath != r2.Docs[i].Entry.RelPath ||
+		if r1.Docs[i].RelPath != r2.Docs[i].RelPath ||
 			r1.Docs[i].Hash != r2.Docs[i].Hash ||
-			r1.Docs[i].Title() != r2.Docs[i].Title() {
+			r1.Docs[i].MetaTitle() != r2.Docs[i].MetaTitle() {
 			t.Errorf("docs[%d] mismatch: %+v vs %+v", i, r1.Docs[i], r2.Docs[i])
 		}
 	}
