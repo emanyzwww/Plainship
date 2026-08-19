@@ -1,4 +1,4 @@
-# core/compiler - 功能编译层
+# core/derive - 功能派生层
 
 ## 描述
 

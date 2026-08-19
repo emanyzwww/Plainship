@@ -13,7 +13,7 @@ scanner 只回答 **"有哪些文件, 是什么类型, 在哪"**, 不做内容�
 | 有哪些文件 / 什么类型 / 什么路径 | scanner       |
 | 文件内容 (mdast / Front Matter)  | core/parser   |
 | 文档之间的关系与站点图谱         | core/assembly |
-| 导航 / 分页 / 搜索等派生数据     | core/compiler |
+| 导航 / 分页 / 搜索等派生数据     | core/derive   |
 
 scanner 是纯读操作且幂等: 它不写任何文件, 可被安全重复调用; 对单个文件的异常不中断扫描, 而是收集进 `Result.Problems`.
 
