@@ -3,8 +3,8 @@ package parser
 import (
 	"testing"
 
+	"github.com/emanyzwww/papership-client/core/markdown"
 	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
 )
 
 // firstH1 提取 AST 中第一个一级标题的文本, 供断言使用.
@@ -50,11 +50,9 @@ func TestParseMarkdownInline(t *testing.T) {
 	}
 }
 
-// TestParseMarkdownDocumentAlwaysRoot 锁定顶层节点恒为 *ast.Document.
+// TestParseMarkdownDocumentAlwaysRoot 锁定共享包返回非 nil 文档.
 func TestParseMarkdownDocumentAlwaysRoot(t *testing.T) {
-	source := []byte("para one\n\npara two\n")
-	node := newMarkdown().Parser().Parse(text.NewReader(source))
-	if _, ok := node.(*ast.Document); !ok {
-		t.Errorf("root node type = %T, want *ast.Document", node)
+	if doc := markdown.Parse([]byte("para one\n\npara two\n")); doc == nil {
+		t.Fatal("markdown.Parse = nil, want 非 nil 文档")
 	}
 }

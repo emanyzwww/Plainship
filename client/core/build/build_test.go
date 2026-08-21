@@ -50,8 +50,8 @@ func TestRunPipeline(t *testing.T) {
 	if res.Summary.Total == 0 || res.Summary.Errors == 0 || res.Summary.Warnings == 0 {
 		t.Errorf("Summary = %+v, want total/errors/warnings > 0", res.Summary)
 	}
-	if res.Summary.StageCount != 5 {
-		t.Errorf("Summary.StageCount = %d, want 5", res.Summary.StageCount)
+	if res.Summary.StageCount != 6 {
+		t.Errorf("Summary.StageCount = %d, want 6", res.Summary.StageCount)
 	}
 	byStage := res.ProblemsByStage()
 	for _, st := range []string{"scanner", "parser", "assembly"} {

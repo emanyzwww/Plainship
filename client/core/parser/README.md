@@ -47,8 +47,8 @@ res, err := build.Run(ctx, sp)
 
 本层按 "只加不改" 原则设计, 未来功能应落在已预留的缝上, 而不是改已有语义:
 
-1. **goldmark 实例集中初始化**: 所有解析共用 `newMarkdown()` 返回的同一实例, 新增 Markdown 能力 (GFM 表格/脚注/
-   代码高亮等) 只需在此注册扩展, 层内其它代码零改动. 不要在各处各自 `goldmark.New()`.
+1. **goldmark 实例集中初始化**: 解析与渲染共用 `core/markdown` 提供的同一实例, 新增 Markdown 能力 (GFM 表格/脚注/
+   代码高亮等) 只需在 `core/markdown` 注册扩展, parser/render 零改动. 不要在各处各自 `goldmark.New()`.
 2. **元数据保持 map**: Front Matter 按 `map[string]any` 原样保留, 键名含义归消费方 (normalizer / assembly / derive)
    按需读取. 新增 `draft` / `weight` / `aliases` 等键, 无需改动 parser 代码.
 3. **契约只加不改**: 脊柱 `pipeline.Doc` 与 `Document` 新增字段直接追加, 已有字段语义不变.

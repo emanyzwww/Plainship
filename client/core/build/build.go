@@ -13,6 +13,7 @@ import (
 	"github.com/emanyzwww/papership-client/core/parser/normalizer"
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/pipeline"
+	"github.com/emanyzwww/papership-client/core/render"
 	"github.com/emanyzwww/papership-client/core/scanner/scanner"
 	"github.com/emanyzwww/papership-client/model/space"
 )
@@ -35,20 +36,21 @@ const (
 	StageAssembly   = "assembly"
 )
 
-// Result 是一次完整构建的产物: 当前终端产物 (派生页) + 跨阶段问题汇总.
+// Result 是一次完整构建的产物: 当前终端产物 (渲染页) + 跨阶段问题汇总.
 type Result struct {
 	Space    *space.Space
 	Derived  *derive.Result     // Derived 派生结果 (Pages/Nav/SiteMap/SearchIndex).
+	Rendered *render.Result     // Rendered 渲染结果 (每页 HTML + OutPath).
 	Summary  pipeline.Summary   // Summary 跨阶段问题汇总.
 	Problems []pipeline.Problem // Problems 按阶段顺序合并的全部问题.
 }
 
-// DocCount 返回派生页数量.
+// DocCount 返回渲染页数量.
 func (r *Result) DocCount() int {
-	if r.Derived == nil {
+	if r.Rendered == nil {
 		return 0
 	}
-	return r.Derived.DocCount()
+	return r.Rendered.DocCount()
 }
 
 // ProblemsByStage 按阶段分组的问题, 便于界面逐层展示.
@@ -56,7 +58,8 @@ func (r *Result) ProblemsByStage() map[string][]pipeline.Problem {
 	return pipeline.GroupByStage(r.Problems)
 }
 
-// Run 执行 scan → parse → normalize → assemble → derive 并把各阶段问题合并为 summary.
+// Run 执行 scan → parse → normalize → assemble → derive → render,
+// 并把各阶段问题合并为 summary.
 //
 // 各阶段经 pipeline.Stage 接口串联; 返回的 error 仅代表整个管线无法继续
 // (如 nil 输入 / 根级扫描错误 / 上下文取消); 单文件级问题一律进入 Result.Problems,
@@ -98,6 +101,14 @@ func Run(ctx context.Context, s *space.Space) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	rendered, err := render.Stage{}.Run(ctx, derived)
+	if err != nil {
+		return nil, err
+	}
 
 	problems := pipeline.MergeProblems(
 		scanned.Problems,
@@ -105,13 +116,15 @@ func Run(ctx context.Context, s *space.Space) (*Result, error) {
 		normalized.Problems,
 		assembled.Problems,
 		derived.Problems,
+		rendered.Problems,
 	)
 	summary := pipeline.Summarize(problems)
-	summary.StageCount = 5
+	summary.StageCount = 6
 
 	return &Result{
 		Space:    s,
 		Derived:  derived,
+		Rendered: rendered,
 		Summary:  summary,
 		Problems: problems,
 	}, nil

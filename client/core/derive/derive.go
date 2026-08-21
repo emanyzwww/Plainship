@@ -108,7 +108,7 @@ func Derive(ctx context.Context, docs *pipeline.Result[document.Document]) (*Res
 		sec := ""
 		if pg.Parent != "" {
 			if par, ok := byRel[pg.Parent]; ok {
-				sec = pageTitle(par)
+				sec = PageTitle(par)
 			}
 		}
 		pg.Section = sec
@@ -211,8 +211,8 @@ func variantDefaults(docs []document.Document, byDoc map[string]document.Documen
 // 导航派生.
 // ==============================
 
-// pageTitle 派生展示名: 标题优先, 否则基名.
-func pageTitle(p Page) string {
+// PageTitle 派生展示名: 标题优先, 否则基名; 供下游层 (render) 复用.
+func PageTitle(p Page) string {
 	if p.Title != "" {
 		return p.Title
 	}
@@ -228,7 +228,7 @@ func (p *Page) breadcrumb(byRel map[string]Page) {
 		if !ok {
 			break
 		}
-		chain = append(chain, NavItem{Title: pageTitle(par), URL: par.URL})
+		chain = append(chain, NavItem{Title: PageTitle(par), URL: par.URL})
 		cur = par
 	}
 	for i, j := 0, len(chain)-1; i < j; i, j = i+1, j-1 {
@@ -281,7 +281,7 @@ func buildNav(pages []Page) []NavItem {
 
 // nodeItem 递归构造导航节点.
 func nodeItem(p Page, byRel map[string]Page) *NavItem {
-	it := &NavItem{Title: pageTitle(p), URL: p.URL}
+	it := &NavItem{Title: PageTitle(p), URL: p.URL}
 	for _, c := range p.Children {
 		if cp, ok := byRel[c]; ok {
 			it.Children = append(it.Children, nodeItem(cp, byRel))
@@ -310,7 +310,7 @@ func searchIndex(pages []Page) []SearchEntry {
 	for _, p := range pages {
 		out = append(out, SearchEntry{
 			URL:   p.URL,
-			Title: pageTitle(p),
+			Title: PageTitle(p),
 			Text:  plainText(p.AST, p.Body),
 		})
 	}

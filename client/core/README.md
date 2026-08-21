@@ -10,7 +10,7 @@ scanner → parser → normalizer → assembly → derive → render → output 
 ```
 
 - **阶段层** (参与管线): scanner / parser (+normalizer) / assembly / derive / render / output / distribution.
-- **底座层** (非阶段, 被各层引用): pipeline (共享契约), build (编排入口).
+- **底座层** (非阶段, 被各层引用): markdown (共享渲染引擎), pipeline (共享契约), build (编排入口).
 
 ## 目录布局约定
 
@@ -29,6 +29,7 @@ client/core/
 ├── render/              # 阶段: 渲染
 ├── output/              # 阶段: 输出
 ├── distribution/        # 阶段: 分发
+├── markdown/            # 底座: goldmark 共享引擎 (解析+渲染)
 ├── pipeline/            # 底座: 共享契约 (Problem/Doc/Result/Stage)
 └── build/               # 底座: 构建编排
 ```
