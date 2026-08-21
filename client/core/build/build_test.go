@@ -27,19 +27,19 @@ func TestRunPipeline(t *testing.T) {
 	}
 
 	// 语义字段由 normalizer 写入共享脊柱.
-	if d, ok := testutil.Lookup(res.Docs, "docs/index.md"); ok {
+	if d, ok := testutil.Lookup(res.Derived.Docs, "docs/index.md"); ok {
 		if d.Title != "首页" || d.Slug != "index" || d.Lang != "" {
 			t.Errorf("index normalized = Title=%q Slug=%q Lang=%q", d.Title, d.Slug, d.Lang)
 		}
 	}
-	if d, ok := testutil.Lookup(res.Docs, "docs/intro.zh.md"); ok {
+	if d, ok := testutil.Lookup(res.Derived.Docs, "docs/intro.zh.md"); ok {
 		if d.Lang != "zh" || d.Base != "intro" {
 			t.Errorf("intro.zh normalized = Lang=%q Base=%q", d.Lang, d.Base)
 		}
 	}
 
 	// 图谱投影由 assembly 填充: link.md 的断链是顶层文档, 父节点为 docs/index.md.
-	if d, ok := testutil.Lookup(res.Docs, "docs/link.md"); ok {
+	if d, ok := testutil.Lookup(res.Derived.Docs, "docs/link.md"); ok {
 		if d.Parent != "docs/index.md" {
 			t.Errorf("link.Parent = %q, want docs/index.md", d.Parent)
 		}
@@ -50,8 +50,8 @@ func TestRunPipeline(t *testing.T) {
 	if res.Summary.Total == 0 || res.Summary.Errors == 0 || res.Summary.Warnings == 0 {
 		t.Errorf("Summary = %+v, want total/errors/warnings > 0", res.Summary)
 	}
-	if res.Summary.StageCount != 4 {
-		t.Errorf("Summary.StageCount = %d, want 4", res.Summary.StageCount)
+	if res.Summary.StageCount != 5 {
+		t.Errorf("Summary.StageCount = %d, want 5", res.Summary.StageCount)
 	}
 	byStage := res.ProblemsByStage()
 	for _, st := range []string{"scanner", "parser", "assembly"} {
@@ -61,9 +61,9 @@ func TestRunPipeline(t *testing.T) {
 	}
 
 	// 排序约定.
-	for i := 1; i < len(res.Docs); i++ {
-		if res.Docs[i-1].RelPath > res.Docs[i].RelPath {
-			t.Errorf("docs not sorted: %s > %s", res.Docs[i-1].RelPath, res.Docs[i].RelPath)
+	for i := 1; i < len(res.Derived.Docs); i++ {
+		if res.Derived.Docs[i-1].RelPath > res.Derived.Docs[i].RelPath {
+			t.Errorf("docs not sorted: %s > %s", res.Derived.Docs[i-1].RelPath, res.Derived.Docs[i].RelPath)
 		}
 	}
 }

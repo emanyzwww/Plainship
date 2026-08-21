@@ -3,7 +3,7 @@
 //   - Problem / Severity: 从扫描到渲染各层统一的问题形态, 供逐层汇总与展示;
 //   - Doc: 全管线共享的文档脊柱 (身份 + 语义字段, 各层按生命周期填充);
 //   - Result[T]: 通用结果信封 (Space 透传 + Docs + Problems);
-//   - 排序 / 问题统计 / Stage 契约: 让各层不再重复实现。
+//   - 排序 / 问题统计 / Stage 契约: 让各层不再重复实现.
 //
 // 设计原则: 基础设施与稳定脊柱放在这里一次定义, 各层只挂自己的载荷, 不重复声明.
 package pipeline
@@ -38,6 +38,7 @@ type Doc struct {
 	Ext     string // Ext 扩展名, 小写, 含点, 如 ".md".
 	Title   string // Title 标准化标题 (FM title 优先, H1 兜底); 由 normalizer 填写.
 	Slug    string // Slug 用于 URL 的稳定标识; 由 normalizer 生成.
+	URL     string // URL 输出路径 (clean URL, 如 /guide/intro/); 由 derive 推导.
 	Hash    string // Hash 原始文件内容 SHA-256, 供增量/缓存比对.
 	IsIndex bool   // IsIndex 是否为入口文档 (index/_index/README); 由 normalizer 推导.
 	Size    int64  // Size 文件字节数.

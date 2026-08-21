@@ -6,25 +6,14 @@ import (
 
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/pipeline"
+	"github.com/emanyzwww/papership-client/internal/testdoc"
 	"github.com/emanyzwww/papership-client/internal/testutil"
 	"github.com/emanyzwww/papership-client/model/space"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
 )
 
-// mdDoc 构造一篇解析完成的文档 (AST 由 goldmark 解析 body 得到).
+// mdDoc 构造一篇解析完成的文档, 实现委托给 testdoc.ParsedDoc.
 func mdDoc(body, rel, dir, base string, isIndex bool) parser.Document {
-	node := goldmark.New().Parser().Parse(text.NewReader([]byte(body)))
-	doc, _ := node.(*ast.Document)
-	if doc == nil {
-		doc = ast.NewDocument()
-	}
-	return parser.Document{
-		Doc:  pipeline.Doc{RelPath: rel, Dir: dir, Base: base, IsIndex: isIndex},
-		AST:  doc,
-		Body: []byte(body),
-	}
+	return testdoc.ParsedDoc(body, rel, dir, base, isIndex)
 }
 
 // TestAssembleBuildsHierarchy 锁定组装后的文档模型携带层次/变体投影, 顺序与 Space 透传正确.

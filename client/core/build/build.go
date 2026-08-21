@@ -9,6 +9,7 @@ import (
 
 	"github.com/emanyzwww/papership-client/core/assembly"
 	"github.com/emanyzwww/papership-client/core/assembly/document"
+	"github.com/emanyzwww/papership-client/core/derive"
 	"github.com/emanyzwww/papership-client/core/parser/normalizer"
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/pipeline"
@@ -23,6 +24,7 @@ var (
 	_ pipeline.Stage[*scanner.Result, *parser.Result]                         = parser.Stage{}
 	_ pipeline.Stage[*parser.Result, *normalizer.Result]                      = normalizer.Stage{}
 	_ pipeline.Stage[*normalizer.Result, *pipeline.Result[document.Document]] = assembly.Stage{}
+	_ pipeline.Stage[*pipeline.Result[document.Document], *derive.Result]     = derive.Stage{}
 )
 
 // 各阶段标记, 与 pipeline.Problem.Stage 对应, 用于逐层汇总展示.
@@ -33,23 +35,28 @@ const (
 	StageAssembly   = "assembly"
 )
 
-// Result 是一次完整构建的产物: 最终文档 + 跨阶段问题汇总.
+// Result 是一次完整构建的产物: 当前终端产物 (派生页) + 跨阶段问题汇总.
 type Result struct {
 	Space    *space.Space
-	Docs     []document.Document
+	Derived  *derive.Result     // Derived 派生结果 (Pages/Nav/SiteMap/SearchIndex).
 	Summary  pipeline.Summary   // Summary 跨阶段问题汇总.
 	Problems []pipeline.Problem // Problems 按阶段顺序合并的全部问题.
 }
 
-// DocCount 返回组装后的文档数量.
-func (r *Result) DocCount() int { return len(r.Docs) }
+// DocCount 返回派生页数量.
+func (r *Result) DocCount() int {
+	if r.Derived == nil {
+		return 0
+	}
+	return r.Derived.DocCount()
+}
 
 // ProblemsByStage 按阶段分组的问题, 便于界面逐层展示.
 func (r *Result) ProblemsByStage() map[string][]pipeline.Problem {
 	return pipeline.GroupByStage(r.Problems)
 }
 
-// Run 执行 scan → parse → normalize → assemble 并把各阶段问题合并为 summary.
+// Run 执行 scan → parse → normalize → assemble → derive 并把各阶段问题合并为 summary.
 //
 // 各阶段经 pipeline.Stage 接口串联; 返回的 error 仅代表整个管线无法继续
 // (如 nil 输入 / 根级扫描错误 / 上下文取消); 单文件级问题一律进入 Result.Problems,
@@ -83,19 +90,28 @@ func Run(ctx context.Context, s *space.Space) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	derived, err := derive.Stage{}.Run(ctx, assembled)
+	if err != nil {
+		return nil, err
+	}
 
 	problems := pipeline.MergeProblems(
 		scanned.Problems,
 		parsed.Problems,
 		normalized.Problems,
 		assembled.Problems,
+		derived.Problems,
 	)
 	summary := pipeline.Summarize(problems)
-	summary.StageCount = 4
+	summary.StageCount = 5
 
 	return &Result{
 		Space:    s,
-		Docs:     assembled.Docs,
+		Derived:  derived,
 		Summary:  summary,
 		Problems: problems,
 	}, nil
