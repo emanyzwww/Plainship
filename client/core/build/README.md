@@ -2,15 +2,15 @@
 
 ## 定位
 
-串联解析管线各阶段 (scan → parse → normalize), 汇总跨阶段问题, 产出统一构建结果.
+串联解析管线各阶段 (scan → parse → normalize → assemble), 汇总跨阶段问题, 产出统一构建结果.
 
 它位于管线顶端而不占阶段, 是 CLI 调用的入口.
 
 ## 管线位置
 
-下列阶段由本包统一编排; 后续再按 `pipeline.Stage` 接口接入 assembly / derive / render:
+下列阶段由本包统一编排; 后续再按相同方式接入 derive / render / output:
 
-scanner → parser → normalizer → (… 后续阶段 …)
+scanner → parser → normalizer → assembly → (… 后续阶段: derive / render / output…)
 
 ## 职责边界
 
