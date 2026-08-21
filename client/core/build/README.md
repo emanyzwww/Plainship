@@ -8,9 +8,9 @@
 
 ## 管线位置
 
-下列阶段由本包统一编排; 后续再按相同方式接入 distribution:
+下列阶段由本包统一编排; distribution 不并入 Run (构建 ≠ 发布), 由 CLI 按命令独立触发:
 
-scanner → parser → normalizer → assembly → derive → render → output → (… 后续阶段: distribution…)
+scanner → parser → normalizer → assembly → derive → render → output
 
 ## 职责边界
 
