@@ -37,10 +37,10 @@ parser 是纯读操作且幂等: 不写任何文件, 可安全重复调用; 单�
 sp := &space.Space{Root: "/path/to/site"}
 scanned, err := scanner.Scan(sp) // 第一步: 扫描
 parsed, err := parser.Parse(scanned) // 第二步: 解析 (可加 ParseWithOptions)
-normalized, err := normalizer.Normalize(parsed) // 第二步收尾: 标准化
+normalized, err := normalizer.Normalize(ctx, parsed) // 第二步收尾: 标准化
 
 // 或直接用编排入口, 自动汇总各阶段问题
-res, err := build.Run(sp)
+res, err := build.Run(ctx, sp)
 ```
 
 ## 约定与扩展点

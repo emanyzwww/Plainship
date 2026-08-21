@@ -7,6 +7,7 @@
 package normalizer
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -23,14 +24,27 @@ type Document = parser.Document
 // Result 是一次 Normalize 的完整产物; 信封复用 pipeline.
 type Result = pipeline.Result[Document]
 
-// Normalize 对一次解析结果执行标准化: 推导语言/入口/标题/slug 并写入脊柱.
-func Normalize(parsed *parser.Result) (*Result, error) {
+// Stage 是标准化阶段: 实现 pipeline.Stage, 供编排层串联; 零值可用.
+type Stage struct{}
+
+// Run 执行一次带上下文的标准化.
+func (Stage) Run(ctx context.Context, in *parser.Result) (*Result, error) { return Normalize(ctx, in) }
+
+// Normalize 对一次解析结果执行标准化, 上下文取消时中止:
+// 推导语言/入口/标题/slug 并写入脊柱.
+func Normalize(ctx context.Context, parsed *parser.Result) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if parsed == nil {
 		return nil, fmt.Errorf("normalizer: nil parse result")
 	}
 
 	res := pipeline.NewResult[Document](parsed.Space)
 	for _, d := range parsed.Docs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		base, lang := splitLang(d.Stem)
 		title := d.MetaTitle() // 方法: 仅查 Front Matter.
 		if title == "" {

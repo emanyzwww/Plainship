@@ -32,15 +32,16 @@ scanner 是纯读操作且幂等: 不写任何文件, 可安全重复调用; 单
 
 ```go
 sp := &space.Space{Root: "/path/to/site"}
-res, err := scanner.Scan(sp)
+res, err := scanner.Scan(ctx, sp) // ctx 来自调用方, 可用 context.Background()
 if err != nil { /* 只有 Space 根级错误才返回 */ }
 for _, d := range res.Docs { /* 交给 parser */ }
 
 // 自定义选项: 包含点文件, 跳过主题收集.
-res2, _ := scanner.ScanWithOptions(sp, scanner.ScanOptions{
+res2, _ := scanner.ScanWithOptions(ctx, sp, scanner.ScanOptions{
 IncludeDotFiles: true,
 SkipThemes:      true,
 })
+
 ```
 
 ## 约定与扩展点

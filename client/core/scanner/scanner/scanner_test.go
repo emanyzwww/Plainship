@@ -1,12 +1,14 @@
 package scanner
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/emanyzwww/papership-client/internal/testutil"
 	"github.com/emanyzwww/papership-client/model/space"
 )
 
@@ -39,16 +41,6 @@ func hasProblem(res *Result, path string) bool {
 	return false
 }
 
-// findProblem 查找指定路径且严重级别匹配的问题; 严重级别用于锁定分级设计.
-func findProblem(res *Result, path string, severity Severity) (Problem, bool) {
-	for _, p := range res.Problems {
-		if p.Path == path && p.Severity == severity {
-			return p, true
-		}
-	}
-	return Problem{}, false
-}
-
 func docRelExists(res *Result, rel string) bool {
 	for _, d := range res.Docs {
 		if d.RelPath == rel {
@@ -76,7 +68,7 @@ func TestScanIndexesDocs(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", "about.markdown"), "# About\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -125,7 +117,7 @@ func TestScanClassifiesAssets(t *testing.T) {
 		writeFile(t, filepath.Join(root, "robots.txt"), "disallow")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -158,7 +150,7 @@ func TestScanSkipsInternalDirs(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", ".hidden.md"), "# hidden\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -181,7 +173,7 @@ func TestScanThemes(t *testing.T) {
 		writeFile(t, filepath.Join(root, "themes", "notes.txt"), "ignore this file\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -193,7 +185,7 @@ func TestScanThemes(t *testing.T) {
 	}
 
 	// SkipThemes 选项.
-	res2, err := ScanWithOptions(s, ScanOptions{SkipThemes: true})
+	res2, err := ScanWithOptions(context.Background(), s, ScanOptions{SkipThemes: true})
 	if err != nil {
 		t.Fatalf("ScanWithOptions: %v", err)
 	}
@@ -207,7 +199,7 @@ func TestScanMissingDocsDirReportsProblem(t *testing.T) {
 		writeFile(t, filepath.Join(root, "papership.yaml"), "site_id: demo\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -221,7 +213,7 @@ func TestScanMissingConfigReportsProblem(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -237,7 +229,7 @@ func TestScanMissingConfigReportsProblem(t *testing.T) {
 }
 
 // ancestorHasGit 从 start 沿父级向上查找 .git, 用于规避测试环境本身位于
-// 某个 git 仓库内(例如 TMP 被指向仓库目录)导致的假阴性.
+// 某个 git 仓库内 (例如 TMP 被指向仓库目录) 导致的假阴性.
 func ancestorHasGit(start string) bool {
 	for dir := start; ; dir = filepath.Dir(dir) {
 		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
@@ -259,7 +251,7 @@ func TestScanDetectsGitRoot(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -280,7 +272,7 @@ func TestScanDetectsGitRoot(t *testing.T) {
 	if ancestorHasGit(s2.Root) {
 		t.Skip("测试环境的临时目录位于某个 git 仓库内, 无法验证无 git 场景")
 	}
-	res2, err := Scan(s2)
+	res2, err := Scan(context.Background(), s2)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -296,7 +288,7 @@ func TestScanNormalizesLayout(t *testing.T) {
 	s := &space.Space{Root: t.TempDir()} // Layout 为零值.
 	writeFile(t, filepath.Join(s.Root, "docs", "index.md"), "# H\n")
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -310,13 +302,13 @@ func TestScanNormalizesLayout(t *testing.T) {
 
 func TestScanMissingRootReturnsError(t *testing.T) {
 	s := &space.Space{Root: filepath.Join(t.TempDir(), "does-not-exist"), Layout: space.DefaultLayout()}
-	if _, err := Scan(s); err == nil {
+	if _, err := Scan(context.Background(), s); err == nil {
 		t.Fatal("Scan on missing root: expected error, got nil")
 	}
 }
 
 func TestScanNilSpaceReturnsError(t *testing.T) {
-	if _, err := Scan(nil); err == nil {
+	if _, err := Scan(context.Background(), nil); err == nil {
 		t.Fatal("Scan(nil): expected error, got nil")
 	}
 }
@@ -336,7 +328,7 @@ func TestScanIncludeDotFiles(t *testing.T) {
 	})
 
 	// 默认: 点条目都被跳过, 只有非点文件 index.md 成为文档.
-	res0, err := Scan(s)
+	res0, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -351,7 +343,7 @@ func TestScanIncludeDotFiles(t *testing.T) {
 	}
 
 	// IncludeDotFiles=true: 点文件/点目录纳入索引.
-	res1, err := ScanWithOptions(s, ScanOptions{IncludeDotFiles: true})
+	res1, err := ScanWithOptions(context.Background(), s, ScanOptions{IncludeDotFiles: true})
 	if err != nil {
 		t.Fatalf("ScanWithOptions: %v", err)
 	}
@@ -384,8 +376,8 @@ func TestScanIncludeDotFiles(t *testing.T) {
 	}
 }
 
-// TestScanEntryMeta 校验 DocEntry/AssetEntry 的元数据字段: 大小、修改时间、
-// 扩展名归一、多级 Dir、绝对/相对路径. 这些字段是增量扫描的依据.
+// TestScanEntryMeta 校验 DocEntry/AssetEntry 的元数据字段: 大小, 修改时间,
+// 扩展名归一, 多级 Dir, 绝对/相对路径. 这些字段是增量扫描的依据.
 func TestScanEntryMeta(t *testing.T) {
 	s := newSpace(t, func(root string) {
 		writeFile(t, filepath.Join(root, "papership.yaml"), "site_id: demo\n")
@@ -393,7 +385,7 @@ func TestScanEntryMeta(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", "img", "logo.png"), "png")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -456,20 +448,20 @@ func TestScanEntryMeta(t *testing.T) {
 }
 
 // TestScanProblemSeverities 锁定 Problem 的严重级别分级, 以及几个边界形态:
-// config 路径为目录(存在但形态不对)、themes 目录存在但无任何主题目录(不报 warning).
+// config 路径为目录 (存在但形态不对), themes 目录存在但无任何主题目录 (不报 warning).
 func TestScanProblemSeverities(t *testing.T) {
 	// 缺 docs 目录 → error; 缺 themes 目录 → warning.
 	s := newSpace(t, func(root string) {
 		writeFile(t, filepath.Join(root, "papership.yaml"), "site_id: demo\n")
 	})
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
-	if _, ok := findProblem(res, s.DocsDir(), SeverityError); !ok {
+	if _, ok := testutil.FindProblem(res.Problems, s.DocsDir(), SeverityError); !ok {
 		t.Errorf("missing docs: want error problem at %q, got %+v", s.DocsDir(), res.Problems)
 	}
-	if _, ok := findProblem(res, s.ThemesDir(), SeverityWarning); !ok {
+	if _, ok := testutil.FindProblem(res.Problems, s.ThemesDir(), SeverityWarning); !ok {
 		t.Errorf("missing themes: want warning problem at %q, got %+v", s.ThemesDir(), res.Problems)
 	}
 
@@ -477,25 +469,25 @@ func TestScanProblemSeverities(t *testing.T) {
 	s2 := newSpace(t, func(root string) {
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 	})
-	res2, err := Scan(s2)
+	res2, err := Scan(context.Background(), s2)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
-	if _, ok := findProblem(res2, s2.ConfigPath(), SeverityError); !ok {
+	if _, ok := testutil.FindProblem(res2.Problems, s2.ConfigPath(), SeverityError); !ok {
 		t.Errorf("missing config: want error problem at %q, got %+v", s2.ConfigPath(), res2.Problems)
 	}
 
-	// themes 目录存在但只有散落文件 → 不产生 warning(与"目录缺失报 warning"不对称, 属设计约定).
+	// themes 目录存在但只有散落文件 → 不产生 warning (与"目录缺失报 warning"不对称, 属设计约定).
 	s3 := newSpace(t, func(root string) {
 		writeFile(t, filepath.Join(root, "papership.yaml"), "site_id: demo\n")
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 		writeFile(t, filepath.Join(root, "themes", "notes.txt"), "x\n")
 	})
-	res3, err := Scan(s3)
+	res3, err := Scan(context.Background(), s3)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
-	if _, ok := findProblem(res3, s3.ThemesDir(), SeverityWarning); ok {
+	if _, ok := testutil.FindProblem(res3.Problems, s3.ThemesDir(), SeverityWarning); ok {
 		t.Errorf("themes dir present but empty of themes: unexpected warning, got %+v", res3.Problems)
 	}
 
@@ -506,14 +498,14 @@ func TestScanProblemSeverities(t *testing.T) {
 		}
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 	})
-	res4, err := Scan(s4)
+	res4, err := Scan(context.Background(), s4)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
 	if res4.ConfigPresent {
 		t.Error("ConfigPresent = true for a directory, want false")
 	}
-	if _, ok := findProblem(res4, s4.ConfigPath(), SeverityError); !ok {
+	if _, ok := testutil.FindProblem(res4.Problems, s4.ConfigPath(), SeverityError); !ok {
 		t.Errorf("config-as-dir: want error problem at %q, got %+v", s4.ConfigPath(), res4.Problems)
 	}
 }
@@ -526,7 +518,7 @@ func TestScanRootMdIsAsset(t *testing.T) {
 		writeFile(t, filepath.Join(root, "docs", "index.md"), "# H\n")
 	})
 
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -551,11 +543,11 @@ func TestScanIdempotent(t *testing.T) {
 		writeFile(t, filepath.Join(root, "themes", "default", "theme.yaml"), "name: default\n")
 	})
 
-	r1, err := Scan(s)
+	r1, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan #1: %v", err)
 	}
-	r2, err := Scan(s)
+	r2, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan #2: %v", err)
 	}
@@ -584,7 +576,7 @@ func TestScanPartialLayoutNormalization(t *testing.T) {
 			Config: "site.yaml",
 		},
 	}
-	res, err := Scan(s)
+	res, err := Scan(context.Background(), s)
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -598,7 +590,7 @@ func TestScanPartialLayoutNormalization(t *testing.T) {
 		t.Errorf("DocCount = %d, want 1 (content/index.md)", res.DocCount())
 	}
 	// custom themes dir 缺失时按 Layout 报告; 且不得出现 error 级问题.
-	if _, ok := findProblem(res, filepath.Join(root, "skins"), SeverityWarning); !ok {
+	if _, ok := testutil.FindProblem(res.Problems, filepath.Join(root, "skins"), SeverityWarning); !ok {
 		t.Errorf("missing slogan for absent skins dir, got %+v", res.Problems)
 	}
 	for _, p := range res.Problems {

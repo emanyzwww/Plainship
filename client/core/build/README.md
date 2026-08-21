@@ -29,7 +29,7 @@ scanner → parser → normalizer → assembly → (… 后续阶段: derive / r
 ## 用法
 
 ```go
-res, err := build.Run(&space.Space{Root: "/path/to/site"})
+res, err := build.Run(ctx, &space.Space{Root: "/path/to/site"})
 if err != nil { /* 根级错误 */ }
 fmt.Printf("docs=%d warnings=%d errors=%d\n", res.DocCount(), res.Summary.Warnings, res.Summary.Errors)
 ```

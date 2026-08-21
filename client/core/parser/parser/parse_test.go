@@ -1,54 +1,24 @@
 package parser
 
 import (
-	"fmt"
-	"os"
+	"context"
 	"path/filepath"
 	"sort"
 	"testing"
 
 	"github.com/emanyzwww/papership-client/core/scanner/scanner"
-	"github.com/emanyzwww/papership-client/model/space"
+	"github.com/emanyzwww/papership-client/internal/testutil"
 )
 
 // mkScan 创建临时 Space 并执行扫描, 返回 parse 的输入.
 func mkScan(t *testing.T, files map[string]string) *scanner.Result {
 	t.Helper()
-	root := t.TempDir()
-	for rel, content := range files {
-		abs := filepath.Join(root, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	res, err := scanner.Scan(&space.Space{Root: root, Layout: space.DefaultLayout()})
+	sp := testutil.NewSpace(t, files)
+	res, err := scanner.Scan(context.Background(), sp)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
 	return res
-}
-
-func findDoc(t *testing.T, res *Result, rel string) (Document, bool) {
-	t.Helper()
-	for _, d := range res.Docs {
-		if d.RelPath == rel {
-			return d, true
-		}
-	}
-	return Document{}, false
-}
-
-// firstProblemAt 查找 Path 与 Severity 匹配的第一个 Problem; 未找到返回 error.
-func firstProblemAt(res *Result, path string, severity scanner.Severity) (scanner.Problem, error) {
-	for _, p := range res.Problems {
-		if p.Path == path && p.Severity == severity {
-			return p, nil
-		}
-	}
-	return scanner.Problem{}, fmt.Errorf("problem not found: %s [%s]", path, severity)
 }
 
 // TestParseBasic 锁定标准路径: 带 FM / 无 FM 混合解析.
@@ -59,7 +29,7 @@ func TestParseBasic(t *testing.T) {
 		"docs/guide/intro.zh.md": "---\ntitle: 介绍\n---\n# 你好\n",
 	})
 
-	res, err := Parse(scanned)
+	res, err := Parse(context.Background(), scanned)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -70,10 +40,7 @@ func TestParseBasic(t *testing.T) {
 		t.Error("Space = nil, want 透传")
 	}
 
-	idx, ok := findDoc(t, res, "docs/index.md")
-	if !ok {
-		t.Fatal("docs/index.md 缺失")
-	}
+	idx := testutil.Find(t, res.Docs, "docs/index.md")
 	if got := idx.MetaTitle(); got != "首页" {
 		t.Errorf("index title = %q, want 首页", got)
 	}
@@ -87,10 +54,7 @@ func TestParseBasic(t *testing.T) {
 		t.Error("index Hash 为空, want SHA-256")
 	}
 
-	intro, ok := findDoc(t, res, "docs/guide/intro.md")
-	if !ok {
-		t.Fatal("docs/guide/intro.md 缺失")
-	}
+	intro := testutil.Find(t, res.Docs, "docs/guide/intro.md")
 	if len(intro.Meta) != 0 {
 		t.Errorf("intro.Meta = %v, want empty (无 FM)", intro.Meta)
 	}
@@ -117,32 +81,32 @@ func TestParseProblems(t *testing.T) {
 	})
 	sort.Slice(scanned.Docs, func(i, j int) bool { return scanned.Docs[i].RelPath < scanned.Docs[j].RelPath })
 
-	res, err := Parse(scanned)
+	res, err := Parse(context.Background(), scanned)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 
 	// bad.yaml.md: 坏 YAML → error 级 Problem, 文档仍产出 (meta 空).
-	if _, err := firstProblemAt(res, "docs/bad.yaml.md", scanner.SeverityError); err != nil {
+	if _, ok := testutil.FindProblem(res.Problems, "docs/bad.yaml.md", scanner.SeverityError); !ok {
 		t.Errorf("bad.yaml.md: %v", err)
 	}
-	if bad, ok := findDoc(t, res, "docs/bad.yaml.md"); ok && len(bad.Meta) != 0 {
+	if bad, ok := testutil.Lookup(res.Docs, "docs/bad.yaml.md"); ok && len(bad.Meta) != 0 {
 		t.Errorf("bad.yaml.md Meta = %v, want empty", bad.Meta)
 	}
 
 	// unclosed.md: 未闭合 → warning 级 Problem, 正文回退为整篇.
-	if _, err := firstProblemAt(res, "docs/unclosed.md", scanner.SeverityWarning); err != nil {
+	if _, ok := testutil.FindProblem(res.Problems, "docs/unclosed.md", scanner.SeverityWarning); !ok {
 		t.Errorf("unclosed.md: %v", err)
 	}
-	if u, ok := findDoc(t, res, "docs/unclosed.md"); ok && string(u.Body) != "---\ntitle: x\n" {
+	if u, ok := testutil.Lookup(res.Docs, "docs/unclosed.md"); ok && string(u.Body) != "---\ntitle: x\n" {
 		t.Errorf("unclosed.md Body = %q, want 整篇原文回退", u.Body)
 	}
 
 	// missing.md: 文件缺失 → error 级 Problem 且文档不入列.
-	if _, err := firstProblemAt(res, "docs/missing.md", scanner.SeverityError); err != nil {
+	if _, ok := testutil.FindProblem(res.Problems, "docs/missing.md", scanner.SeverityError); !ok {
 		t.Errorf("missing.md: %v", err)
 	}
-	if _, ok := findDoc(t, res, "docs/missing.md"); ok {
+	if _, ok := testutil.Lookup(res.Docs, "docs/missing.md"); ok {
 		t.Error("missing.md 不应产出 Document")
 	}
 
@@ -156,14 +120,11 @@ func TestParseProblems(t *testing.T) {
 func TestParseBOM(t *testing.T) {
 	raw := "\ufeff---\ntitle: bom\n---\n# Hi\n"
 	scanned := mkScan(t, map[string]string{"docs/index.md": raw})
-	res, err := Parse(scanned)
+	res, err := Parse(context.Background(), scanned)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	idx, ok := findDoc(t, res, "docs/index.md")
-	if !ok {
-		t.Fatal("docs/index.md 缺失")
-	}
+	idx := testutil.Find(t, res.Docs, "docs/index.md")
 	if got := idx.MetaTitle(); got != "bom" {
 		t.Errorf("title = %q, want bom (BOM 已剥离)", got)
 	}
@@ -177,7 +138,7 @@ func TestParseBOM(t *testing.T) {
 
 // TestParseNilResult 锁定 nil 输入报错.
 func TestParseNilResult(t *testing.T) {
-	if _, err := Parse(nil); err == nil {
+	if _, err := Parse(context.Background(), nil); err == nil {
 		t.Fatal("Parse(nil): expected error, got nil")
 	}
 }
@@ -188,11 +149,11 @@ func TestParseIdempotent(t *testing.T) {
 		"docs/index.md":          "---\ntitle: 首页\n---\n# Hello\n",
 		"docs/guide/intro.zh.md": "# 介绍\n",
 	})
-	r1, err := Parse(scanned)
+	r1, err := Parse(context.Background(), scanned)
 	if err != nil {
 		t.Fatalf("Parse #1: %v", err)
 	}
-	r2, err := Parse(scanned)
+	r2, err := Parse(context.Background(), scanned)
 	if err != nil {
 		t.Fatalf("Parse #2: %v", err)
 	}

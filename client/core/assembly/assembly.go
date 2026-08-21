@@ -7,6 +7,7 @@
 package assembly
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"path"
@@ -19,15 +20,24 @@ import (
 	"github.com/yuin/goldmark/ast"
 )
 
-// problem 构造带组装层标记的共享问题.
-func problem(sev pipeline.Severity, docPath, format string, args ...any) pipeline.Problem {
-	return pipeline.Problemf(sev, "assembly", docPath, format, args...)
+// stageName 是本阶段的问题来源标记.
+const stageName = "assembly"
+
+// Stage 是组装阶段: 实现 pipeline.Stage, 供编排层串联; 零值可用.
+type Stage struct{}
+
+// Run 执行一次带上下文的组装.
+func (Stage) Run(ctx context.Context, in *pipeline.Result[parser.Document]) (*pipeline.Result[document.Document], error) {
+	return Assemble(ctx, in)
 }
 
 // Assemble 执行一次组装: 对每篇文档提取内部链接, 构建站点图谱, 再投影为统一文档模型.
 //
-// 返回的 error 仅代表整层无法继续 (如 nil 输入); 单文档问题进入 Result.Problems.
-func Assemble(docs *pipeline.Result[parser.Document]) (*pipeline.Result[document.Document], error) {
+// 返回的 error 仅代表整层无法继续 (如 nil 输入 / 上下文取消); 单文档问题进入 Result.Problems.
+func Assemble(ctx context.Context, docs *pipeline.Result[parser.Document]) (*pipeline.Result[document.Document], error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if docs == nil {
 		return nil, fmt.Errorf("assembly: nil input")
 	}
@@ -46,6 +56,9 @@ func Assemble(docs *pipeline.Result[parser.Document]) (*pipeline.Result[document
 	gd := make([]graph.Doc, 0, docs.DocCount())
 	var linkProblems []pipeline.Problem
 	for _, d := range docs.Docs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		links, probs := resolveLinks(d, known, docsRoot)
 		linkProblems = append(linkProblems, probs...)
 		gd = append(gd, graph.Doc{
@@ -60,6 +73,9 @@ func Assemble(docs *pipeline.Result[parser.Document]) (*pipeline.Result[document
 
 	out := pipeline.NewResult[document.Document](docs.Space)
 	for _, d := range docs.Docs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		nd, ok := g.Node(d.RelPath)
 		if !ok {
 			continue // 输入与图谱一致, 理论不可达.
@@ -104,7 +120,7 @@ func resolveLinks(d parser.Document, known map[string]bool, docsRoot string) (li
 			}
 		}
 		if rel == "" {
-			problems = append(problems, problem(pipeline.SeverityWarning, d.RelPath,
+			problems = append(problems, pipeline.Problemf(pipeline.SeverityWarning, stageName, d.RelPath,
 				"链接目标 %q 未指向已知文档", dest))
 			return ast.WalkContinue, nil
 		}
@@ -119,10 +135,10 @@ func resolveLinks(d parser.Document, known map[string]bool, docsRoot string) (li
 
 // resolveTarget 把链接目标解析为站内文档候选 RelPath 列表.
 //
-// docsRoot 是文文档根目录名 (跟随 Space.Layout.Docs, 默认 "docs"), 链接解析
+// docsRoot 是文档根目录名 (跟随 Space.Layout.Docs, 默认 "docs"), 链接解析
 // 必须与文档 RelPath 前缀一致. 返回 (nil, false) 表示非站内文档链接
 // (外链 / 锚点 / 空 / 超出 docs 根), 不构成图谱边. 多个候选按优先级排列
-// (原样、补 .md/.markdown、目录→入口文档), 由调用方在已知文档中选第一个命中项.
+// (原样, 补 .md/.markdown, 目录→入口文档), 由调用方在已知文档中选第一个命中项.
 func resolveTarget(d parser.Document, dest, docsRoot string) ([]string, bool) {
 	if dest == "" || strings.HasPrefix(dest, "#") {
 		return nil, false

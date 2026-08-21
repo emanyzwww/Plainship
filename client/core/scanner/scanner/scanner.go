@@ -3,6 +3,7 @@
 package scanner
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -22,10 +23,8 @@ var (
 	walkDir = filepath.WalkDir
 )
 
-// problem 构造带扫描层标记的共享问题.
-func problem(sev Severity, path, msg string) Problem {
-	return Problem{Severity: sev, Stage: "scanner", Path: path, Message: msg}
-}
+// stageName 是本阶段的问题来源标记.
+const stageName = "scanner"
 
 // ScanOptions 控制扫描行为; 零值即默认行为.
 type ScanOptions struct {
@@ -33,24 +32,22 @@ type ScanOptions struct {
 	IncludeDotFiles bool // IncludeDotFiles 为 true 时包含 . 开头的文件和目录, 默认 false.
 }
 
-// Scan 执行一次完整扫描.
-//
-//	s 的 Root 必须已设置; Layout 若为零值会回填为标准布局.
-//
-//	扫描会:
-//	  1. 回填 Layout, 探测 GitRoot/GitAvailable 到 s;
-//	  2. 检测配置文件是否存在(不解析内容, 解析留给配置加载层);
-//	  3. 按 Layout 遍历 docs / themes / 根目录, 分类并建立索引.
-//
-//	只有 Space 根级别的错误会返回 error.
-//
-//	单个文件的异常一律收集进 Result.Problems, 不中断扫描.
-func Scan(s *space.Space) (*Result, error) {
-	return ScanWithOptions(s, ScanOptions{})
+// Stage 是扫描阶段: 实现 pipeline.Stage, 供编排层串联; 零值可用 (默认选项).
+type Stage struct{}
+
+// Run 执行一次带上下文的扫描.
+func (Stage) Run(ctx context.Context, in *space.Space) (*Result, error) { return Scan(ctx, in) }
+
+// Scan 执行一次完整扫描, 上下文取消时中止.
+func Scan(ctx context.Context, s *space.Space) (*Result, error) {
+	return ScanWithOptions(ctx, s, ScanOptions{})
 }
 
 // ScanWithOptions 与 Scan 相同, 支持自定义扫描选项.
-func ScanWithOptions(s *space.Space, opts ScanOptions) (*Result, error) {
+func ScanWithOptions(ctx context.Context, s *space.Space, opts ScanOptions) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if s == nil {
 		return nil, fmt.Errorf("scanner: nil space")
 	}
@@ -141,7 +138,7 @@ func findGitRoot(start string) (string, error) {
 
 // detectConfigFiles 检测配置文件是否存在并记录到 Result.
 //
-// 注意: 这里只做存在性检测, 不解析 YAML. 配置解析属于配置加载层(后续可接入 yaml 库),
+// 注意: 这里只做存在性检测, 不解析 YAML. 配置解析属于配置加载层 (后续可接入 yaml 库),
 // scanner 仅负责把"缺配置"作为问题暴露出来.
 func detectConfigFiles(res *Result) {
 	s := res.Space
@@ -149,9 +146,9 @@ func detectConfigFiles(res *Result) {
 	if info, err := osStat(s.ConfigPath()); err == nil && !info.IsDir() {
 		res.ConfigPresent = true
 	} else if info != nil && info.IsDir() {
-		res.Problems = append(res.Problems, problem(SeverityError, s.ConfigPath(), "Space 配置文件路径是一个目录而非文件, 将以默认配置继续; 若要发布站点请先创建 papership.yaml"))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityError, stageName, s.ConfigPath(), "Space 配置文件路径是一个目录而非文件, 将以默认配置继续; 若要发布站点请先创建 papership.yaml"))
 	} else {
-		res.Problems = append(res.Problems, problem(SeverityError, s.ConfigPath(), "Space 配置文件不存在, 将以默认配置继续; 若要发布站点请先补全 papership.yaml"))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityError, stageName, s.ConfigPath(), "Space 配置文件不存在, 将以默认配置继续; 若要发布站点请先补全 papership.yaml"))
 	}
 
 	localPath := filepath.Join(s.StateDir(), "config.yaml")
@@ -169,15 +166,15 @@ func scanDocs(res *Result, opts ScanOptions) {
 	s := res.Space
 	docsDir := s.DocsDir()
 
-	// 处理 docs 不存在
+	// 处理 docs 不存在.
 	if info, err := osStat(docsDir); err != nil || !info.IsDir() {
-		res.Problems = append(res.Problems, problem(SeverityError, docsDir, "docs 目录不存在或不可读, 站点将无任何文档"))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityError, stageName, docsDir, "docs 目录不存在或不可读, 站点将无任何文档"))
 		return
 	}
 
 	err := walkDir(docsDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			res.Problems = append(res.Problems, problem(SeverityWarning, path, "遍历失败: "+err.Error()))
+			res.Problems = append(res.Problems, pipeline.Problemf(SeverityWarning, stageName, path, "遍历失败: %v", err))
 			return nil // 继续遍历兄弟节点.
 		}
 		if d.IsDir() {
@@ -206,13 +203,13 @@ func scanDocs(res *Result, opts ScanOptions) {
 		return nil
 	})
 	if err != nil {
-		res.Problems = append(res.Problems, problem(SeverityError, docsDir, "扫描 docs 失败: "+err.Error()))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityError, stageName, docsDir, "扫描 docs 失败: %v", err))
 	}
 }
 
 // shouldSkipName 判断是否跳过该名字: ".git" 无论选项如何都跳过.
 //
-// 其余点开头的条目仅在 IncludeDotFiles=false(默认)时跳过.
+// 其余点开头的条目仅在 IncludeDotFiles=false (默认值) 时跳过.
 func shouldSkipName(name string, includeDotFiles bool) bool {
 	if name == ".git" {
 		return true
@@ -300,13 +297,13 @@ func scanThemes(res *Result, opts ScanOptions) {
 	themesDir := s.ThemesDir()
 
 	if info, err := osStat(themesDir); err != nil || !info.IsDir() {
-		res.Problems = append(res.Problems, problem(SeverityWarning, themesDir, "themes 目录不存在, 将使用默认主题"))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityWarning, stageName, themesDir, "themes 目录不存在, 将使用默认主题"))
 		return
 	}
 
 	entries, err := os.ReadDir(themesDir)
 	if err != nil {
-		res.Problems = append(res.Problems, problem(SeverityWarning, themesDir, "读取 themes 失败: "+err.Error()))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityWarning, stageName, themesDir, "读取 themes 失败: %v", err))
 		return
 	}
 
@@ -314,7 +311,7 @@ func scanThemes(res *Result, opts ScanOptions) {
 		if shouldSkipName(e.Name(), opts.IncludeDotFiles) {
 			continue
 		}
-		// 主题以一级目录为准
+		// 主题以一级目录为准.
 		if !e.IsDir() {
 			continue
 		}
@@ -357,7 +354,7 @@ func scanRootAssets(res *Result, opts ScanOptions) {
 
 	err = walkDir(s.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			res.Problems = append(res.Problems, problem(SeverityWarning, path, "遍历失败: "+err.Error()))
+			res.Problems = append(res.Problems, pipeline.Problemf(SeverityWarning, stageName, path, "遍历失败: %v", err))
 			return nil
 		}
 		if underPath(path, skipRoots...) {
@@ -381,7 +378,7 @@ func scanRootAssets(res *Result, opts ScanOptions) {
 		return nil
 	})
 	if err != nil {
-		res.Problems = append(res.Problems, problem(SeverityWarning, s.Root, "扫描根目录失败: "+err.Error()))
+		res.Problems = append(res.Problems, pipeline.Problemf(SeverityWarning, stageName, s.Root, "扫描根目录失败: %v", err))
 	}
 }
 

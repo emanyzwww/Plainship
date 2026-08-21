@@ -33,7 +33,7 @@ scanner → parser → normalizer → **assembly**(本层) → derive → render
 ## 用法
 
 ```go
-assembled, err := assembly.Assemble(normalized) // normalized 来自 normalizer.Normalize
+assembled, err := assembly.Assemble(ctx, normalized) // normalized 来自 normalizer.Normalize
 if err != nil { /* 只有整层无法继续才返回 */ }
 for _, d := range assembled.Docs {
 fmt.Printf("%s -> parent=%s links=%v\n", d.RelPath, d.Parent, d.Links)

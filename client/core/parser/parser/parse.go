@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -17,27 +18,37 @@ var osReadFile = os.ReadFile
 // bom 是 UTF-8 BOM, 解析前剥离, 但 Hash 仍基于原始内容计算.
 var bom = []byte{0xEF, 0xBB, 0xBF}
 
-// problem 构造带解析层标记的共享问题.
-func problem(sev pipeline.Severity, path, msg string) pipeline.Problem {
-	return pipeline.Problem{Severity: sev, Stage: "parser", Path: path, Message: msg}
-}
+// stageName 是本阶段的问题来源标记.
+const stageName = "parser"
 
-// Parse 执行一次完整解析.
-func Parse(scanned *scanner.Result) (*Result, error) {
-	return ParseWithOptions(scanned, ParseOptions{})
+// Stage 是解析阶段: 实现 pipeline.Stage, 供编排层串联; 零值可用 (默认选项).
+type Stage struct{}
+
+// Run 执行一次带上下文的解析.
+func (Stage) Run(ctx context.Context, in *scanner.Result) (*Result, error) { return Parse(ctx, in) }
+
+// Parse 执行一次完整解析, 上下文取消时中止.
+func Parse(ctx context.Context, scanned *scanner.Result) (*Result, error) {
+	return ParseWithOptions(ctx, scanned, ParseOptions{})
 }
 
 // ParseWithOptions 与 Parse 相同, 支持自定义解析选项.
-func ParseWithOptions(scanned *scanner.Result, _ ParseOptions) (*Result, error) {
+func ParseWithOptions(ctx context.Context, scanned *scanner.Result, _ ParseOptions) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if scanned == nil {
 		return nil, fmt.Errorf("parser: nil scan result")
 	}
 
 	res := pipeline.NewResult[Document](scanned.Space)
 	for _, entry := range scanned.Docs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		doc, problems, err := parseEntry(entry)
 		if err != nil {
-			res.Problems = append(res.Problems, problem(pipeline.SeverityError, entry.RelPath, "解析失败: "+err.Error()))
+			res.Problems = append(res.Problems, pipeline.Problemf(pipeline.SeverityError, stageName, entry.RelPath, "解析失败: %v", err))
 			continue
 		}
 		res.Docs = append(res.Docs, doc)
@@ -68,13 +79,13 @@ func parseEntry(entry scanner.DocEntry) (Document, []pipeline.Problem, error) {
 	case !has:
 		meta = map[string]any{}
 	case !closed:
-		problems = append(problems, problem(pipeline.SeverityWarning, entry.RelPath, "Front Matter 缺少结尾分隔行 (---), 按无元数据处理"))
+		problems = append(problems, pipeline.Problemf(pipeline.SeverityWarning, stageName, entry.RelPath, "Front Matter 缺少结尾分隔行 (---), 按无元数据处理"))
 		meta = map[string]any{}
 		body = content
 	default:
 		m, derr := decodeMeta(metaRaw)
 		if derr != nil {
-			problems = append(problems, problem(pipeline.SeverityError, entry.RelPath, "Front Matter 解析失败: "+derr.Error()))
+			problems = append(problems, pipeline.Problemf(pipeline.SeverityError, stageName, entry.RelPath, "Front Matter 解析失败: %v", derr))
 			meta = map[string]any{}
 		} else {
 			meta = m

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -98,12 +99,12 @@ func TestSummaryAndGrouping(t *testing.T) {
 }
 
 // addOne 是适配成 Stage 的普通函数.
-func addOne(n int) (int, error) { return n + 1, nil }
+func addOne(ctx context.Context, n int) (int, error) { return n + 1, nil }
 
 // TestFuncStage 锁定函数式 Stage 适配.
 func TestFuncStage(t *testing.T) {
 	st := FuncStage[int, int](addOne)
-	out, err := st.Run(41)
+	out, err := st.Run(context.Background(), 41)
 	if err != nil || out != 42 {
 		t.Errorf("FuncStage.Run = %d/%v, want 42/nil", out, err)
 	}

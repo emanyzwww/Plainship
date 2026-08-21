@@ -1,11 +1,12 @@
 package assembly
 
 import (
+	"context"
 	"testing"
 
-	"github.com/emanyzwww/papership-client/core/assembly/document"
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/pipeline"
+	"github.com/emanyzwww/papership-client/internal/testutil"
 	"github.com/emanyzwww/papership-client/model/space"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -26,27 +27,6 @@ func mdDoc(body, rel, dir, base string, isIndex bool) parser.Document {
 	}
 }
 
-func findDoc(t *testing.T, res *pipeline.Result[document.Document], rel string) document.Document {
-	t.Helper()
-	for _, d := range res.Docs {
-		if d.RelPath == rel {
-			return d
-		}
-	}
-	t.Fatalf("文档 %q 缺失", rel)
-	return document.Document{}
-}
-
-func hasProblem(t *testing.T, res *pipeline.Result[document.Document], path, severity string) bool {
-	t.Helper()
-	for _, p := range res.Problems {
-		if p.Path == path && p.Severity == pipeline.Severity(severity) {
-			return true
-		}
-	}
-	return false
-}
-
 // TestAssembleBuildsHierarchy 锁定组装后的文档模型携带层次/变体投影, 顺序与 Space 透传正确.
 func TestAssembleBuildsHierarchy(t *testing.T) {
 	in := &pipeline.Result[parser.Document]{
@@ -59,7 +39,7 @@ func TestAssembleBuildsHierarchy(t *testing.T) {
 			mdDoc("# About\n", "docs/about.md", "", "about", false),
 		},
 	}
-	res, err := Assemble(in)
+	res, err := Assemble(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}
@@ -70,15 +50,15 @@ func TestAssembleBuildsHierarchy(t *testing.T) {
 		t.Fatalf("DocCount = %d, want 5", res.DocCount())
 	}
 
-	idx := findDoc(t, res, "docs/index.md")
+	idx := testutil.Find(t, res.Docs, "docs/index.md")
 	if idx.Parent != "" || len(idx.Children) != 2 {
 		t.Errorf("index: Parent=%q Children=%v", idx.Parent, idx.Children)
 	}
-	guide := findDoc(t, res, "docs/guide/README.md")
+	guide := testutil.Find(t, res.Docs, "docs/guide/README.md")
 	if guide.Parent != "docs/index.md" {
 		t.Errorf("guide.Parent = %q, want docs/index.md", guide.Parent)
 	}
-	intro := findDoc(t, res, "docs/guide/intro.md")
+	intro := testutil.Find(t, res.Docs, "docs/guide/intro.md")
 	if intro.Parent != "docs/guide/README.md" {
 		t.Errorf("intro.Parent = %q, want docs/guide/README.md", intro.Parent)
 	}
@@ -105,12 +85,12 @@ func TestAssembleResolvesLinks(t *testing.T) {
 			mdDoc("# 介绍\n", "docs/guide/intro.zh.md", "guide", "intro", false),
 		},
 	}
-	res, err := Assemble(in)
+	res, err := Assemble(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}
 
-	intro := findDoc(t, res, "docs/guide/intro.md")
+	intro := testutil.Find(t, res.Docs, "docs/guide/intro.md")
 	want := []string{"docs/guide/intro.zh.md", "docs/index.md"} // 字典序: 'g' < 'i'.
 	got := intro.Links
 	if len(got) != len(want) {
@@ -122,12 +102,12 @@ func TestAssembleResolvesLinks(t *testing.T) {
 		}
 	}
 
-	idx := findDoc(t, res, "docs/index.md")
+	idx := testutil.Find(t, res.Docs, "docs/index.md")
 	if len(idx.Referrers) != 1 || idx.Referrers[0] != "docs/guide/intro.md" {
 		t.Errorf("index.Referrers = %v, want [docs/guide/intro.md]", idx.Referrers)
 	}
 
-	if !hasProblem(t, res, "docs/guide/intro.md", "warning") {
+	if _, problemFound := testutil.FindProblem(res.Problems, "docs/guide/intro.md", pipeline.SeverityWarning); !problemFound {
 		t.Error("断链未收集为 warning 问题")
 	}
 	if len(res.Problems) != 1 {
@@ -145,11 +125,11 @@ func TestAssembleDirectoryLink(t *testing.T) {
 			mdDoc("# Guide\n", "docs/guide/README.md", "guide", "README", true),
 		},
 	}
-	res, err := Assemble(in)
+	res, err := Assemble(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}
-	idx := findDoc(t, res, "docs/index.md")
+	idx := testutil.Find(t, res.Docs, "docs/index.md")
 	if len(idx.Links) != 1 || idx.Links[0] != "docs/guide/README.md" {
 		t.Errorf("index.Links = %v, want [docs/guide/README.md] (目录链接应指向入口文档)", idx.Links)
 	}
@@ -170,11 +150,11 @@ func TestAssembleCustomLayout(t *testing.T) {
 			mdDoc("# 介绍\n", "content/guide/intro.zh.md", "guide", "intro", false),
 		},
 	}
-	res, err := Assemble(in)
+	res, err := Assemble(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}
-	intro := findDoc(t, res, "content/guide/intro.md")
+	intro := testutil.Find(t, res.Docs, "content/guide/intro.md")
 	want := []string{"content/guide/intro.zh.md"}
 	if len(intro.Links) != 1 || intro.Links[0] != want[0] {
 		t.Errorf("intro.Links = %v, want %v (自定义布局下链接应解析为 content/...)",
@@ -187,7 +167,7 @@ func TestAssembleCustomLayout(t *testing.T) {
 
 // TestAssembleNilInput 锁定 nil 输入报错.
 func TestAssembleNilInput(t *testing.T) {
-	if _, err := Assemble(nil); err == nil {
+	if _, err := Assemble(context.Background(), nil); err == nil {
 		t.Fatal("Assemble(nil): expected error, got nil")
 	}
 }
@@ -201,7 +181,7 @@ func TestAssembleOnlyOwnProblems(t *testing.T) {
 			{Severity: pipeline.SeverityError, Stage: "parser", Path: "docs/a.md", Message: "上游问题"},
 		},
 	}
-	res, err := Assemble(in)
+	res, err := Assemble(context.Background(), in)
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}

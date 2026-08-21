@@ -5,6 +5,8 @@
 package build
 
 import (
+	"context"
+
 	"github.com/emanyzwww/papership-client/core/assembly"
 	"github.com/emanyzwww/papership-client/core/assembly/document"
 	"github.com/emanyzwww/papership-client/core/parser/normalizer"
@@ -12,6 +14,15 @@ import (
 	"github.com/emanyzwww/papership-client/core/pipeline"
 	"github.com/emanyzwww/papership-client/core/scanner/scanner"
 	"github.com/emanyzwww/papership-client/model/space"
+)
+
+// 各阶段以 pipeline.Stage 接口声明; 编译期校验实现, Run 依序串联.
+// 新阶段 (derive/render/output) 落地后按同样方式接入.
+var (
+	_ pipeline.Stage[*space.Space, *scanner.Result]                           = scanner.Stage{}
+	_ pipeline.Stage[*scanner.Result, *parser.Result]                         = parser.Stage{}
+	_ pipeline.Stage[*parser.Result, *normalizer.Result]                      = normalizer.Stage{}
+	_ pipeline.Stage[*normalizer.Result, *pipeline.Result[document.Document]] = assembly.Stage{}
 )
 
 // 各阶段标记, 与 pipeline.Problem.Stage 对应, 用于逐层汇总展示.
@@ -40,25 +51,35 @@ func (r *Result) ProblemsByStage() map[string][]pipeline.Problem {
 
 // Run 执行 scan → parse → normalize → assemble 并把各阶段问题合并为 summary.
 //
-// 返回的 error 仅代表整个管线无法继续 (如 nil 输入 / 根级扫描错误);
-// 单文件级问题一律进入 Result.Problems, 不中断构建.
-func Run(s *space.Space) (*Result, error) {
-	scanned, err := scanner.Scan(s)
+// 各阶段经 pipeline.Stage 接口串联; 返回的 error 仅代表整个管线无法继续
+// (如 nil 输入 / 根级扫描错误 / 上下文取消); 单文件级问题一律进入 Result.Problems,
+// 不中断构建.
+func Run(ctx context.Context, s *space.Space) (*Result, error) {
+	scanned, err := scanner.Stage{}.Run(ctx, s)
 	if err != nil {
 		return nil, err
 	}
-
-	parsed, err := parser.Parse(scanned)
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	normalized, err := normalizer.Normalize(parsed)
+	parsed, err := parser.Stage{}.Run(ctx, scanned)
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
-	assembled, err := assembly.Assemble(normalized)
+	normalized, err := normalizer.Stage{}.Run(ctx, parsed)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	assembled, err := assembly.Stage{}.Run(ctx, normalized)
 	if err != nil {
 		return nil, err
 	}

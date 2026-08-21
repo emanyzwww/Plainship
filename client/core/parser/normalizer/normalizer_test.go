@@ -1,51 +1,32 @@
 package normalizer
 
 import (
-	"os"
-	"path/filepath"
+	"context"
 	"testing"
 
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/scanner/scanner"
-	"github.com/emanyzwww/papership-client/model/space"
+	"github.com/emanyzwww/papership-client/internal/testutil"
 )
 
 // normalizeFixture 构造临时 Space, 走完 scan → parse → normalize 全链路.
 func normalizeFixture(t *testing.T, files map[string]string) *Result {
 	t.Helper()
-	root := t.TempDir()
-	for rel, content := range files {
-		abs := filepath.Join(root, filepath.FromSlash(rel))
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	scanned, err := scanner.Scan(&space.Space{Root: root, Layout: space.DefaultLayout()})
+	ctx := context.Background()
+	sp := testutil.NewSpace(t, files)
+	scanned, err := scanner.Scan(ctx, sp)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
-	parsed, err := parser.Parse(scanned)
+	parsed, err := parser.Parse(ctx, scanned)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	res, err := Normalize(parsed)
+	res, err := Normalize(ctx, parsed)
 	if err != nil {
 		t.Fatalf("normalize: %v", err)
 	}
 	return res
-}
-
-func findDoc(t *testing.T, res *Result, rel string) (Document, bool) {
-	t.Helper()
-	for _, d := range res.Docs {
-		if d.RelPath == rel {
-			return d, true
-		}
-	}
-	return Document{}, false
 }
 
 // TestNormalizeLanguageSuffix 锁定语言后缀: 提取/忽略/带地区/全大写不误判.
@@ -61,7 +42,7 @@ func TestNormalizeLanguageSuffix(t *testing.T) {
 	}
 
 	// intro.zh → 拆出语言, 基名去后缀.
-	if d, ok := findDoc(t, res, "docs/intro.zh.md"); ok {
+	if d, ok := testutil.Lookup(res.Docs, "docs/intro.zh.md"); ok {
 		if d.Lang != "zh" || d.Base != "intro" {
 			t.Errorf("intro.zh: Lang=%q Base=%q, want zh/intro", d.Lang, d.Base)
 		}
@@ -70,7 +51,7 @@ func TestNormalizeLanguageSuffix(t *testing.T) {
 	}
 
 	// en-us → 带地区后缀的语言码.
-	if d, ok := findDoc(t, res, "docs/guide.en-us.md"); ok {
+	if d, ok := testutil.Lookup(res.Docs, "docs/guide.en-us.md"); ok {
 		if d.Lang != "en-us" || d.Base != "guide" {
 			t.Errorf("guide.en-us: Lang=%q Base=%q, want en-us/guide", d.Lang, d.Base)
 		}
@@ -79,7 +60,7 @@ func TestNormalizeLanguageSuffix(t *testing.T) {
 	}
 
 	// case.EN → 全大写不识别为语言后缀 (基名原样保留).
-	if d, ok := findDoc(t, res, "docs/case.EN.md"); ok {
+	if d, ok := testutil.Lookup(res.Docs, "docs/case.EN.md"); ok {
 		if d.Lang != "" || d.Base != "case.EN" {
 			t.Errorf("case.EN: Lang=%q Base=%q, want ''/case.EN", d.Lang, d.Base)
 		}
@@ -88,7 +69,7 @@ func TestNormalizeLanguageSuffix(t *testing.T) {
 	}
 
 	// plain → 无后缀.
-	if d, ok := findDoc(t, res, "docs/plain.md"); ok && d.Lang != "" {
+	if d, ok := testutil.Lookup(res.Docs, "docs/plain.md"); ok && d.Lang != "" {
 		t.Errorf("plain: Lang = %q, want empty", d.Lang)
 	}
 }
@@ -104,15 +85,15 @@ func TestNormalizeIndex(t *testing.T) {
 	})
 
 	for _, rel := range []string{"docs/index.md", "docs/_index.md", "docs/guide/README.md", "docs/index.zh.md"} {
-		if d, ok := findDoc(t, res, rel); ok && !d.IsIndex {
+		if d, ok := testutil.Lookup(res.Docs, rel); ok && !d.IsIndex {
 			t.Errorf("%s: IsIndex = false, want true", rel)
 		}
 	}
 	// index.zh.md 的语言后缀照常剥离.
-	if d, ok := findDoc(t, res, "docs/index.zh.md"); ok && (d.Lang != "zh" || d.Base != "index") {
+	if d, ok := testutil.Lookup(res.Docs, "docs/index.zh.md"); ok && (d.Lang != "zh" || d.Base != "index") {
 		t.Errorf("index.zh: Lang=%q Base=%q, want zh/index", d.Lang, d.Base)
 	}
-	if d, ok := findDoc(t, res, "docs/notindex.md"); ok && d.IsIndex {
+	if d, ok := testutil.Lookup(res.Docs, "docs/notindex.md"); ok && d.IsIndex {
 		t.Error("notindex.md: IsIndex = true, want false")
 	}
 }
@@ -126,17 +107,17 @@ func TestNormalizeTitle(t *testing.T) {
 		"docs/h2-only.md":  "## 二级\n",
 	})
 
-	if d, ok := findDoc(t, res, "docs/with-fm.md"); ok && d.Title != "元数据标题" {
+	if d, ok := testutil.Lookup(res.Docs, "docs/with-fm.md"); ok && d.Title != "元数据标题" {
 		t.Errorf("with-fm Title = %q, want 元数据标题 (FM 优先)", d.Title)
 	}
-	if d, ok := findDoc(t, res, "docs/with-h1.md"); ok && d.Title != "正文标题" {
+	if d, ok := testutil.Lookup(res.Docs, "docs/with-h1.md"); ok && d.Title != "正文标题" {
 		t.Errorf("with-h1 Title = %q, want 正文标题 (H1 兜底)", d.Title)
 	}
-	if d, ok := findDoc(t, res, "docs/no-title.md"); ok && d.Title != "" {
+	if d, ok := testutil.Lookup(res.Docs, "docs/no-title.md"); ok && d.Title != "" {
 		t.Errorf("no-title Title = %q, want empty", d.Title)
 	}
 	// 只有 H2 时不能误当 H1 兜底.
-	if d, ok := findDoc(t, res, "docs/h2-only.md"); ok && d.Title != "" {
+	if d, ok := testutil.Lookup(res.Docs, "docs/h2-only.md"); ok && d.Title != "" {
 		t.Errorf("h2-only Title = %q, want empty (H2 不作为标题兜底)", d.Title)
 	}
 }
@@ -178,7 +159,7 @@ func TestNormalizeSortsAndCarries(t *testing.T) {
 
 // TestNormalizeNilInput 锁定 nil 输入报错.
 func TestNormalizeNilInput(t *testing.T) {
-	if _, err := Normalize(nil); err == nil {
-		t.Fatal("Normalize(nil): expected error, got nil")
+	if _, err := Normalize(context.Background(), nil); err == nil {
+		t.Fatal("Normalize(context.Background(), nil): expected error, got nil")
 	}
 }
