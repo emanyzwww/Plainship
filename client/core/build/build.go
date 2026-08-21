@@ -10,6 +10,7 @@ import (
 	"github.com/emanyzwww/papership-client/core/assembly"
 	"github.com/emanyzwww/papership-client/core/assembly/document"
 	"github.com/emanyzwww/papership-client/core/derive"
+	"github.com/emanyzwww/papership-client/core/output"
 	"github.com/emanyzwww/papership-client/core/parser/normalizer"
 	"github.com/emanyzwww/papership-client/core/parser/parser"
 	"github.com/emanyzwww/papership-client/core/pipeline"
@@ -36,21 +37,22 @@ const (
 	StageAssembly   = "assembly"
 )
 
-// Result 是一次完整构建的产物: 当前终端产物 (渲染页) + 跨阶段问题汇总.
+// Result 是一次完整构建的产物: 当前终端产物 (写盘清单) + 跨阶段问题汇总.
 type Result struct {
 	Space    *space.Space
 	Derived  *derive.Result     // Derived 派生结果 (Pages/Nav/SiteMap/SearchIndex).
 	Rendered *render.Result     // Rendered 渲染结果 (每页 HTML + OutPath).
+	Written  *output.Result     // Written 输出结果 (写盘清单 + 附加文件).
 	Summary  pipeline.Summary   // Summary 跨阶段问题汇总.
 	Problems []pipeline.Problem // Problems 按阶段顺序合并的全部问题.
 }
 
-// DocCount 返回渲染页数量.
+// DocCount 返回写盘文件数量.
 func (r *Result) DocCount() int {
-	if r.Rendered == nil {
+	if r.Written == nil {
 		return 0
 	}
-	return r.Rendered.DocCount()
+	return r.Written.DocCount()
 }
 
 // ProblemsByStage 按阶段分组的问题, 便于界面逐层展示.
@@ -109,6 +111,21 @@ func Run(ctx context.Context, s *space.Space) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	written, err := output.Stage{}.Run(ctx, &output.Input{
+		Space:   s,
+		Theme:   rendered.Theme,
+		Pages:   rendered.Docs,
+		Assets:  scanned.Assets,
+		SiteMap: derived.SiteMap,
+		Search:  derived.SearchIndex,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	problems := pipeline.MergeProblems(
 		scanned.Problems,
@@ -117,14 +134,16 @@ func Run(ctx context.Context, s *space.Space) (*Result, error) {
 		assembled.Problems,
 		derived.Problems,
 		rendered.Problems,
+		written.Problems,
 	)
 	summary := pipeline.Summarize(problems)
-	summary.StageCount = 6
+	summary.StageCount = 7
 
 	return &Result{
 		Space:    s,
 		Derived:  derived,
 		Rendered: rendered,
+		Written:  written,
 		Summary:  summary,
 		Problems: problems,
 	}, nil

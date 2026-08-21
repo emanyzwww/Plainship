@@ -2,6 +2,8 @@ package build
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/emanyzwww/papership-client/internal/testutil"
@@ -22,8 +24,8 @@ func TestRunPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.DocCount() != 4 {
-		t.Fatalf("DocCount = %d, want 4", res.DocCount())
+	if res.Rendered.DocCount() != 4 {
+		t.Fatalf("页面数 = %d, want 4", res.Rendered.DocCount())
 	}
 
 	// 语义字段由 normalizer 写入共享脊柱.
@@ -50,13 +52,24 @@ func TestRunPipeline(t *testing.T) {
 	if res.Summary.Total == 0 || res.Summary.Errors == 0 || res.Summary.Warnings == 0 {
 		t.Errorf("Summary = %+v, want total/errors/warnings > 0", res.Summary)
 	}
-	if res.Summary.StageCount != 6 {
-		t.Errorf("Summary.StageCount = %d, want 6", res.Summary.StageCount)
+	if res.Summary.StageCount != 7 {
+		t.Errorf("Summary.StageCount = %d, want 7", res.Summary.StageCount)
 	}
 	byStage := res.ProblemsByStage()
 	for _, st := range []string{"scanner", "parser", "assembly"} {
 		if len(byStage[st]) == 0 {
 			t.Errorf("ProblemsByStage missing stage %q: %+v", st, byStage)
+		}
+	}
+
+	// 输出层: 页面与附加文件已写盘.
+	if res.Written == nil || res.Written.DocCount() == 0 {
+		t.Fatal("Written = nil or empty")
+	}
+	buildDir := filepath.Join(s.Root, "build")
+	for _, f := range []string{"index.html", "sitemap.xml", "search-index.json", "robots.txt"} {
+		if _, err := os.Stat(filepath.Join(buildDir, f)); err != nil {
+			t.Errorf("%s 未写出: %v", f, err)
 		}
 	}
 

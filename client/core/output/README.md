@@ -2,7 +2,9 @@
 
 ## 定位
 
-将所有渲染结果写入输出目录, 生成完整静态站点, 同时生成各种附加文件.
+把渲染结果写入输出目录, 生成完整静态站点与附加文件: 页面 HTML、静态资源、sitemap/search-index/robots.
+
+逐文件失败收集为 Problem 并继续出盘, 不中断整站 (与全管线容错哲学一致).
 
 ## 管线位置
 
@@ -10,25 +12,46 @@ scanner → parser → normalizer → assembly → derive → render → **outpu
 
 ## 职责边界
 
-| 问题                              | 归属              |
-|-----------------------------------|-------------------|
-| 最终的 HTML 页面 / 静态资源       | core/render       |
-| 把结果写入输出目录 / 生成附加文件 | **core/output**   |
-| 打包并推送到服务端                | core/distribution |
+| 问题                           | 归属              |
+|--------------------------------|-------------------|
+| Markdown → HTML + 主题模板填充 | core/render       |
+| 页面 / 静态资源 / 附加文件落盘 | **core/output**   |
+| 打包并推送到服务端             | core/distribution |
 
 ## 输入与输出
 
-> ⏳ 待实现: 该层尚未落地, 输入类型 / 输出契约 / 调用链在实现时补充.
+- 输入: `*output.Input` — 各层产物的汇合点: `Space` / `Theme` (来自 render) / `Pages` (HTML+OutPath) /
+  `Assets` (来自 scan) / `SiteMap` + `Search` (来自 derive).
+- 输出: `*output.Result` — `Docs` 为写盘清单 (`Written{Path, Bytes}`, 相对 BuildDir).
+- 落盘规则:
+    - 页面: <build>/<OutPath> (clean URL, 如 `guide/intro/index.html`);
+    - 静态资源: docs 下非文档文件剥掉 docs 前缀 (`docs/img/logo.png` → `img/logo.png`), 根级资源原样;
+    - 主题 static: `themes/<theme>/static/*` 原样拷贝到 build 根; 无 static 目录静默跳过;
+    - 附加文件: `sitemap.xml` (SiteURL + 页面 URL) / `search-index.json` / `robots.txt` (SiteURL 非空时含 Sitemap 行).
 
 ## 用法
 
-> ⏳ 待实现: 该层尚未落地, 用法示例随实现补充.
+```go
+written, err := output.Write(ctx, &output.Input{
+	Space:   sp,
+	Theme:   rendered.Theme,
+	Pages:   rendered.Docs,
+	Assets:  scanned.Assets,
+	SiteMap: derived.SiteMap,
+	Search:  derived.SearchIndex,
+})
+if err != nil { /* 只有整层无法继续才返回 */ }
+fmt.Printf("写出 %d 个文件\n", written.DocCount())
+```
 
 ## 约定与扩展点
 
-> ⏳ 待实现: 该层尚未落地, 设计规则与扩展缝在实现时沉淀.
+1. **只写新增, 不清理旧档**: 当前每次构建增量写盘; 清除陈旧文件 (clean build) 留待后续基于 StateDir 实现.
+2. **sitemap 绝对地址**: `SiteURL` 为空时 loc 用相对路径 (URL 本身), 配置站点地址后自动变绝对地址.
+3. **搜索索引即是后续 CLI 展示的数据源**: search-index.json 由 derive.SearchEntry 序列化 (带 json 标签).
+4. **附加文件追加缝**: 新附件 (如 `feed.xml` / `404.html`) 在 `addExtras` 里追加, 不改变已有产出.
 
 ## 测试
 
-> ⏳ 待实现: 该层尚未落地, 测试命令与覆盖说明在实现时补充.
-
+`go test ./core/output/...` : 整站出盘 (页面/资源/主题 static/附加文件全断言), 自定义文档根, 资源缺失容错, nil 输入,
+Stage 冒烟.

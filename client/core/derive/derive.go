@@ -40,9 +40,9 @@ type Page struct {
 
 // SearchEntry 是搜索索引中的一条.
 type SearchEntry struct {
-	URL   string // URL 输出路径.
-	Title string // Title 页面标题.
-	Text  string // Text 页面正文纯文本 (空白折叠).
+	URL   string `json:"url"`   // URL 输出路径.
+	Title string `json:"title"` // Title 页面标题.
+	Text  string `json:"text"`  // Text 页面正文纯文本 (空白折叠).
 }
 
 // Result 是一次 Derive 的完整产物.
